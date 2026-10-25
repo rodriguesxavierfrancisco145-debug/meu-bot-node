@@ -199,27 +199,31 @@ async function startBot() {
         const sender = mek.key.participant || from;
         const isGroup = from.endsWith('@g.us');
         const args = body.trim().split(/ +/);
-        const command = args.shift().toLowerCase();
+        const command = args.length > 0 ? args.shift().toLowerCase() : '';
 
         // ----------------------------------------------------
         // DETECTOR E BLOQUEIO DE LINKS EM GRUPOS
         // ----------------------------------------------------
         if (isGroup && body) {
-            // Regex para detetar links (http, https, www, t.me, wa.me, ou domínios comuns)
-            const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-90-9]*\.(com|org|net|mz|br|pt|io|me|tk|ml|ga|cf|gq|cc|xyz)(\/[^\s]*)?)/i;
+            const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9]*\.(com|org|net|mz|br|pt|io|me|tk|ml|ga|cf|gq|cc|xyz)(\/[^\s]*)?)/i;
             
             if (linkRegex.test(body)) {
-                // Verifica se quem enviou é administrador (se for admin, o bot não apaga)
                 const userIsAdmin = await isAdmin(sock, from, sender);
                 if (!userIsAdmin) {
                     try {
-                        // 1. Apaga a mensagem com o link
-                        await sock.sendMessage(from, { delete: mek.key });
+                        // Apaga a mensagem enviada pelo usuário comum
+                        await sock.sendMessage(from, {
+                            delete: {
+                                remoteJid: from,
+                                id: mek.key.id,
+                                participant: sender,
+                                fromMe: false
+                            }
+                        });
                     } catch (e) {
                         console.log('Erro ao apagar link (certifique-se que o bot é admin):', e);
                     }
 
-                    // 2. Envia o aviso de proibição de links
                     const msgAntiLink = `🚫🔒 **AVISO IMPORTANTE — MOZ CONECTED** 🔒🚫\n\n` +
                         `━━━━━━━━━━━━━━━━━━\n\n` +
                         `⚠️ **É ESTRITAMENTE PROIBIDO ENVIAR LINKS NO GRUPO!** 🚫🔗\n\n` +
@@ -232,7 +236,7 @@ async function startBot() {
                         `👑 **MOZ CONECTED** — Organização e respeito em primeiro lugar! 🔥`;
 
                     await sock.sendMessage(from, { text: msgAntiLink }, { quoted: mek });
-                    return; // Para a execução para não processar comandos caso a mensagem tenha sido um link
+                    return;
                 }
             }
         }
@@ -272,7 +276,6 @@ async function startBot() {
                         return;
                     }
 
-                    // Salva o ID como usado
                     saveComprovativoUsado(comprovativoDados.transactionId);
 
                     const msgSucesso = `🚨💳 **COMPROVATIVO DETECTADO** 💳🚨\n\n` +
@@ -311,7 +314,6 @@ async function startBot() {
                 console.error('Erro ao processar imagem:', err);
             }
         } else if (body && (body.toUpperCase().includes('CONFIRMADO') || body.toUpperCase().includes('RECEBESTE'))) {
-            // Processa também se o usuário enviar o comprovativo colado em formato de texto direto
             const comprovativoDados = processarComprovativo(body);
 
             if (comprovativoDados.isValido) {
@@ -331,7 +333,6 @@ async function startBot() {
                     return;
                 }
 
-                // Salva o ID como usado
                 saveComprovativoUsado(comprovativoDados.transactionId);
 
                 const msgSucesso = `🚨💳 **COMPROVATIVO DETECTADO** 💳🚨\n\n` +
@@ -356,9 +357,6 @@ async function startBot() {
         }
 
         switch (command) {
-            // ----------------------------------------------------
-            // ADICIONAR COMPRA E ATUALIZAR RANKING
-            // ----------------------------------------------------
             case '.compra':
             case 'compra':
             case '!compra': {
@@ -421,9 +419,6 @@ async function startBot() {
                 break;
             }
 
-            // ----------------------------------------------------
-            // CONSULTAR TOP 10 RANKING
-            // ----------------------------------------------------
             case '.ranking':
             case 'ranking':
             case '!ranking': {
@@ -517,7 +512,6 @@ async function startBot() {
                     return;
                 }
 
-                // Verifica se o remetente é administrador do grupo
                 const userIsAdmin = await isAdmin(sock, from, sender);
                 if (!userIsAdmin) {
                     await sock.sendMessage(from, { text: '❌ **Apenas os administradores do grupo podem usar este comando!** 🚫' }, { quoted: mek });
@@ -552,7 +546,6 @@ function processarComprovativo(rawText) {
     const temMpesa = text.includes('M-PESA') || text.includes('CONFIRMADO') || text.includes('TRANSFERIDO') || text.includes('PAGO') || text.includes('RECEBESTE');
     const temMoeda = text.includes('MT') || text.includes('MZN');
 
-    // Procura especificamente o código de transação após a palavra "CONFIRMADO" (ex: DJP8M321LD6)
     let transactionId = 'N/A';
     const txMatch = text.match(/CONFIRMADO\s+([A-Z0-9]{10,12})/);
     if (txMatch) {
@@ -562,17 +555,14 @@ function processarComprovativo(rawText) {
         if (fallbackTx) transactionId = fallbackTx[1];
     }
 
-    // Extrai o valor correto (ex: 100.00MT ou 100MT)
     let valorStr = 'Confirmado';
     const valorMatch = text.match(/([\d\.,]+)\s*(MT|MZN)/);
     if (valorMatch) {
         valorStr = `${valorMatch[1]} MT`;
     }
 
-    // Extrai a data (ex: 25/10/26)
     const dataMatch = text.match(/(\d{2}[\/\.-]\d{2}[\/\.-]\d{2,4})/);
 
-    // Extração e conversão melhorada e corrigida da hora (lida com PM/AM do M-Pesa corretamente)
     let horaStr = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', hour12: false });
     const horaMatch = text.match(/(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
     if (horaMatch) {
@@ -598,7 +588,6 @@ function processarComprovativo(rawText) {
         return { isValido: false };
     }
 
-    // Extrai o destinatário/remetente (ex: de 913770 - SIMO)
     let destinatario = 'Cliente M-Pesa';
     const deMatch = text.match(/(?:DE|PARA)\s+([0-9\s\-]+[\–\-]?[A-Z\s]+)/);
     if (deMatch) {
