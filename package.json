@@ -1,15 +1,16 @@
 {
-  "name": "meu-bot-node",
+  "name": "meu-bot-no",
   "version": "1.0.0",
   "description": "Bot do WhatsApp em Node.js",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.5",
-    "pino": "^8.19.0",
+    "express": "^4.19.2",
     "node-cron": "^3.0.3",
+    "pino": "^9.0.0",
     "tesseract.js": "^5.1.0"
   }
 }
