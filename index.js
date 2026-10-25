@@ -69,6 +69,17 @@ function formatData(totalMB) {
     return `${Math.round(totalMB)} MB`;
 }
 
+// Auxiliar para verificar se o remetente é administrador do grupo
+async function isAdmin(sock, chatId, participantJid) {
+    try {
+        const metadata = await sock.groupMetadata(chatId);
+        const participant = metadata.participants.find(p => p.id === participantJid);
+        return participant && (participant.admin === 'admin' || participant.admin === 'superadmin');
+    } catch (e) {
+        return false;
+    }
+}
+
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     const { version } = await fetchLatestBaileysVersion();
@@ -160,6 +171,7 @@ async function startBot() {
                      messageType === 'extendedTextMessage' ? mek.message.extendedTextMessage.text : '';
 
         const from = mek.key.remoteJid;
+        const sender = mek.key.participant || from;
         const isGroup = from.endsWith('@g.us');
         const args = body.trim().split(/ +/);
         const command = args.shift().toLowerCase();
@@ -320,7 +332,7 @@ async function startBot() {
                 const sortedRanking = Object.values(rankingData).sort((a, b) => b.totalMB - a.totalMB);
 
                 if (sortedRanking.length === 0) {
-                    await sock.sendMessage(from, { text: '📊 O ranking ainda está vazio!' });
+                    await sock.sendMessage(from, { text: '📊 O ranking ainda está vazio!' }, { quoted: mek });
                     return;
                 }
 
@@ -345,7 +357,7 @@ async function startBot() {
                 rankingTxt += `━━━━━━━━━━━━━━━━━━━━━━\n` +
                               `🔥 Continua a comprar para subir no ranking e ter acesso a ofertas exclusivas! 🚀`;
 
-                await sock.sendMessage(from, { text: rankingTxt, mentions });
+                await sock.sendMessage(from, { text: rankingTxt, mentions }, { quoted: mek });
                 break;
             }
 
@@ -376,7 +388,7 @@ async function startBot() {
                     `💯 Qualidade e preços acessíveis para todos!\n\n` +
                     `📡 A tua conexão, a nossa prioridade! ❤️‍🔥`;
                 
-                await sock.sendMessage(from, { text: tabelaTexto });
+                await sock.sendMessage(from, { text: tabelaTexto }, { quoted: mek });
                 break;
 
             case 'pagar':
@@ -397,12 +409,19 @@ async function startBot() {
                     `🙏 Obrigado pela preferência e pela confiança! ❤️🔥\n\n` +
                     `💯 **A SUA SATISFAÇÃO É A NOSSA PRIORIDADE!** 🚀`;
 
-                await sock.sendMessage(from, { text: pagamentoTexto });
+                await sock.sendMessage(from, { text: pagamentoTexto }, { quoted: mek });
                 break;
 
             case 'grupo':
                 if (!isGroup) {
-                    await sock.sendMessage(from, { text: '❌ Este comando só pode ser usado dentro de grupos!' });
+                    await sock.sendMessage(from, { text: '❌ Este comando só pode ser usado dentro de grupos!' }, { quoted: mek });
+                    return;
+                }
+
+                // Verifica se o remetente é administrador do grupo
+                const userIsAdmin = await isAdmin(sock, from, sender);
+                if (!userIsAdmin) {
+                    await sock.sendMessage(from, { text: '❌ **Apenas os administradores do grupo podem usar este comando!** 🚫' }, { quoted: mek });
                     return;
                 }
                 
@@ -411,16 +430,16 @@ async function startBot() {
                 if (action === 'f') {
                     try {
                         await sock.groupSettingUpdate(from, 'announcement');
-                        await sock.sendMessage(from, { text: '🔒 **Grupo fechado manualmente!** 🔐' });
+                        await sock.sendMessage(from, { text: '🔒 **Grupo fechado manualmente!** 🔐' }, { quoted: mek });
                     } catch (e) {
-                        await sock.sendMessage(from, { text: '❌ Erro: Certifica-te de que o bot é administrador do grupo.' });
+                        await sock.sendMessage(from, { text: '❌ Erro: Certifica-te de que o bot é administrador do grupo.' }, { quoted: mek });
                     }
                 } else if (action === 'a') {
                     try {
                         await sock.groupSettingUpdate(from, 'not_announcement');
-                        await sock.sendMessage(from, { text: '🔓 **Grupo aberto manualmente!** ✅' });
+                        await sock.sendMessage(from, { text: '🔓 **Grupo aberto manualmente!** ✅' }, { quoted: mek });
                     } catch (e) {
-                        await sock.sendMessage(from, { text: '❌ Erro: Certifica-te de que o bot é administrador do grupo.' });
+                        await sock.sendMessage(from, { text: '❌ Erro: Certifica-te de que o bot é administrador do grupo.' }, { quoted: mek });
                     }
                 }
                 break;
