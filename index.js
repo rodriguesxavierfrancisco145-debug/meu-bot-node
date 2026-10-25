@@ -454,19 +454,19 @@ function processarComprovativo(rawText) {
     // Extrai a data (ex: 25/10/26)
     const dataMatch = text.match(/(\d{2}[\/\.-]\d{2}[\/\.-]\d{2,4})/);
 
-    // Extrai a hora corretamente (mesmo formato AM/PM como "8:13 PM")
-    let horaStr = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+    // Extração e conversão melhorada e corrigida da hora (lida com PM/AM do M-Pesa corretamente)
+    let horaStr = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', hour12: false });
     const horaMatch = text.match(/(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
     if (horaMatch) {
-        let rawHora = horaMatch[1].trim();
-        if (rawHora.toUpperCase().includes('PM')) {
-            let partes = rawHora.replace(/PM/i, '').trim().split(':');
+        let rawHora = horaMatch[1].trim().toUpperCase();
+        if (rawHora.includes('PM')) {
+            let partes = rawHora.replace('PM', '').trim().split(':');
             let h = parseInt(partes[0]);
             let m = partes[1];
             if (h < 12) h += 12;
             horaStr = `${h}:${m}`;
-        } else if (rawHora.toUpperCase().includes('AM')) {
-            let partes = rawHora.replace(/AM/i, '').trim().split(':');
+        } else if (rawHora.includes('AM')) {
+            let partes = rawHora.replace('AM', '').trim().split(':');
             let h = parseInt(partes[0]);
             let m = partes[1];
             if (h === 12) h = 0;
