@@ -202,6 +202,42 @@ async function startBot() {
         const command = args.shift().toLowerCase();
 
         // ----------------------------------------------------
+        // DETECTOR E BLOQUEIO DE LINKS EM GRUPOS
+        // ----------------------------------------------------
+        if (isGroup && body) {
+            // Regex para detetar links (http, https, www, t.me, wa.me, ou domínios comuns)
+            const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-90-9]*\.(com|org|net|mz|br|pt|io|me|tk|ml|ga|cf|gq|cc|xyz)(\/[^\s]*)?)/i;
+            
+            if (linkRegex.test(body)) {
+                // Verifica se quem enviou é administrador (se for admin, o bot não apaga)
+                const userIsAdmin = await isAdmin(sock, from, sender);
+                if (!userIsAdmin) {
+                    try {
+                        // 1. Apaga a mensagem com o link
+                        await sock.sendMessage(from, { delete: mek.key });
+                    } catch (e) {
+                        console.log('Erro ao apagar link (certifique-se que o bot é admin):', e);
+                    }
+
+                    // 2. Envia o aviso de proibição de links
+                    const msgAntiLink = `🚫🔒 **AVISO IMPORTANTE — MOZ CONECTED** 🔒🚫\n\n` +
+                        `━━━━━━━━━━━━━━━━━━\n\n` +
+                        `⚠️ **É ESTRITAMENTE PROIBIDO ENVIAR LINKS NO GRUPO!** 🚫🔗\n\n` +
+                        `❌ Não envie links de outros grupos.\n` +
+                        `❌ Não compartilhe links de sites ou canais sem autorização.\n` +
+                        `❌ Evite mensagens que possam atrapalhar a organização do grupo.\n\n` +
+                        `📢 **ATENÇÃO!** O incumprimento desta regra poderá resultar na remoção da mensagem ou na expulsão do membro. ⚠️\n\n` +
+                        `━━━━━━━━━━━━━━━━━━\n\n` +
+                        `🤝 Vamos manter o grupo organizado, seguro e focado no nosso objetivo! 💯🔥\n\n` +
+                        `👑 **MOZ CONECTED** — Organização e respeito em primeiro lugar! 🔥`;
+
+                    await sock.sendMessage(from, { text: msgAntiLink }, { quoted: mek });
+                    return; // Para a execução para não processar comandos caso a mensagem tenha sido um link
+                }
+            }
+        }
+
+        // ----------------------------------------------------
         // VERIFICAÇÃO DE COMPROVATIVO (IMAGEM, DOCUMENTO OU TEXTO)
         // ----------------------------------------------------
         if (messageType === 'imageMessage' || messageType === 'documentMessage') {
