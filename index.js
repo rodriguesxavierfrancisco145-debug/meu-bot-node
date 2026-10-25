@@ -72,6 +72,23 @@ async function startBot() {
         browser: ["Chrome (Linux)", "", ""]
     });
 
+    // Se ainda não estiver registado, gera o código de pareamento automaticamente para os logs do Render com o teu número
+    if (!sock.authState.creds.registered) {
+        const phoneNumber = "258873361776"; 
+        setTimeout(async () => {
+            try {
+                console.log('\n📱 A solicitar código de pareamento para o número:', phoneNumber);
+                let code = await sock.requestPairingCode(phoneNumber);
+                code = code?.match(/.{1,4}/g)?.join("-") || code;
+                console.log(`\n========================================`);
+                console.log(`🔥 O TEU CÓDIGO DE PAREAMENTO É: ${code}`);
+                console.log(`========================================\n`);
+            } catch (err) {
+                console.error('❌ Erro ao gerar o código de pareamento:', err);
+            }
+        }, 4000);
+    }
+
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', (update) => {
