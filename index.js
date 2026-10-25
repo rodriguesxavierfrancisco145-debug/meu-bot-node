@@ -8,7 +8,6 @@ const {
 } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const cron = require('node-cron');
-const readline = require('readline');
 const Tesseract = require('tesseract.js');
 const fs = require('fs');
 const path = require('path');
@@ -58,10 +57,6 @@ function formatData(totalMB) {
     return `${Math.round(totalMB)} MB`;
 }
 
-// Configuração para ler o número de telefone no terminal/logs
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-const question = (text) => new Promise((resolve) => rl.question(text, resolve));
-
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     const { version } = await fetchLatestBaileysVersion();
@@ -76,22 +71,6 @@ async function startBot() {
         printQRInTerminal: false,
         browser: ["Chrome (Linux)", "", ""]
     });
-
-    if (!sock.authState.creds.registered) {
-        console.log('\n📱 **AUTENTICAÇÃO POR CÓDIGO DE PAREAMENTO** 📱\n');
-        const phoneNumber = await question('👉 Digita o teu número do WhatsApp (ex: 258843843479): ');
-        
-        setTimeout(async () => {
-            try {
-                let code = await sock.requestPairingCode(phoneNumber.trim());
-                code = code?.match(/.{1,4}/g)?.join("-") || code;
-                console.log(`\n🔥 **O TEU CÓDIGO DE PAREAMENTO É:** \x1b[32m${code}\x1b[0m\n`);
-                console.log('Vai ao WhatsApp > Aparelhos Conectados > Conectar com número de telefone e insere este código!\n');
-            } catch (err) {
-                console.error('❌ Erro ao gerar o código de pareamento:', err);
-            }
-        }, 3000);
-    }
 
     sock.ev.on('creds.update', saveCreds);
 
@@ -219,7 +198,6 @@ async function startBot() {
             case '.compra':
             case 'compra':
             case '!compra': {
-                // Verifica se o comando foi enviado como resposta a uma mensagem
                 const quotedContext = mek.message?.extendedTextMessage?.contextInfo;
                 if (!quotedContext || !quotedContext.participant) {
                     await sock.sendMessage(from, { 
@@ -247,10 +225,8 @@ async function startBot() {
                     return;
                 }
 
-                // Carrega ranking atual
                 const rankingData = loadRanking();
 
-                // Inicializa se o cliente ainda não existir
                 if (!rankingData[clienteJid]) {
                     rankingData[clienteJid] = {
                         numero: clienteNumero,
@@ -259,12 +235,10 @@ async function startBot() {
                     };
                 }
 
-                // Atualiza o acumulado do cliente
                 rankingData[clienteJid].totalMB += mbsComprados;
                 rankingData[clienteJid].comprasContador += 1;
                 saveRanking(rankingData);
 
-                // Ordena o ranking para calcular a posição atual
                 const sortedRanking = Object.values(rankingData).sort((a, b) => b.totalMB - a.totalMB);
                 const posicao = sortedRanking.findIndex(user => user.numero === clienteNumero) + 1;
                 const totalFormatado = formatData(rankingData[clienteJid].totalMB);
@@ -301,7 +275,7 @@ async function startBot() {
                                  `━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
                 const mentions = [];
-                const topList = sortedRanking.slice(0, 10); // Exibe os 10 primeiros
+                const topList = sortedRanking.slice(0, 10);
 
                 topList.forEach((user, index) => {
                     let medalha = '👤';
