@@ -27,6 +27,9 @@ global.sock_startup_cleaned = true;
 // Arquivo JSON para guardar o histórico do ranking
 const RANKING_FILE = path.join(__dirname, 'ranking.json');
 
+// Arquivo JSON para guardar os comprovativos já utilizados
+const COMPROVATIVOS_FILE = path.join(__dirname, 'comprovativos_usados.json');
+
 // Função para carregar dados do ranking
 function loadRanking() {
     if (!fs.existsSync(RANKING_FILE)) {
@@ -43,6 +46,28 @@ function loadRanking() {
 // Função para salvar dados do ranking
 function saveRanking(data) {
     fs.writeFileSync(RANKING_FILE, JSON.stringify(data, null, 2));
+}
+
+// Função para carregar comprovativos usados
+function loadComprovativosUsados() {
+    if (!fs.existsSync(COMPROVATIVOS_FILE)) {
+        fs.writeFileSync(COMPROVATIVOS_FILE, JSON.stringify([]));
+    }
+    try {
+        const data = fs.readFileSync(COMPROVATIVOS_FILE);
+        return JSON.parse(data);
+    } catch (e) {
+        return [];
+    }
+}
+
+// Função para salvar comprovativo usado
+function saveComprovativoUsado(txId) {
+    const usados = loadComprovativosUsados();
+    if (!usados.includes(txId)) {
+        usados.push(txId);
+        fs.writeFileSync(COMPROVATIVOS_FILE, JSON.stringify(usados, null, 2));
+    }
 }
 
 // Auxiliar para converter texto em MB (ex: "440MB" -> 440, "1.5GB" -> 1536)
@@ -195,6 +220,25 @@ async function startBot() {
                 const comprovativoDados = processarComprovativo(text);
 
                 if (comprovativoDados.isValido) {
+                    const usados = loadComprovativosUsados();
+                    if (usados.includes(comprovativoDados.transactionId)) {
+                        const msgDuplicado = `⚠️🚫 **COMPROVATIVO JÁ UTILIZADO** 🚫⚠️\n\n` +
+                            `━━━━━━━━━━━━━━━━━━\n\n` +
+                            `❌ Este comprovativo já foi utilizado anteriormente no sistema!\n\n` +
+                            `🔍 **Status:** Comprovativo duplicado\n` +
+                            `⛔ **Resultado:** Pagamento não validado\n\n` +
+                            `⚠️ Por favor, envie um comprovativo válido e ainda não utilizado para que possamos verificar o seu pagamento.\n\n` +
+                            `━━━━━━━━━━━━━━━━━━\n\n` +
+                            `🛡️ **MOZ CONECTED** 🔥\n` +
+                            `✅ Segurança e transparência em todas as transações! 📲`;
+
+                        await sock.sendMessage(from, { text: msgDuplicado }, { quoted: mek });
+                        return;
+                    }
+
+                    // Salva o ID como usado
+                    saveComprovativoUsado(comprovativoDados.transactionId);
+
                     const msgSucesso = `🚨💳 **COMPROVATIVO DETECTADO** 💳🚨\n\n` +
                         `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
                         `📋 **DETALHES DA TRANSAÇÃO**\n\n` +
@@ -235,6 +279,25 @@ async function startBot() {
             const comprovativoDados = processarComprovativo(body);
 
             if (comprovativoDados.isValido) {
+                const usados = loadComprovativosUsados();
+                if (usados.includes(comprovativoDados.transactionId)) {
+                    const msgDuplicado = `⚠️🚫 **COMPROVATIVO JÁ UTILIZADO** 🚫⚠️\n\n` +
+                        `━━━━━━━━━━━━━━━━━━\n\n` +
+                        `❌ Este comprovativo já foi utilizado anteriormente no sistema!\n\n` +
+                        `🔍 **Status:** Comprovativo duplicado\n` +
+                        `⛔ **Resultado:** Pagamento não validado\n\n` +
+                        `⚠️ Por favor, envie um comprovativo válido e ainda não utilizado para que possamos verificar o seu pagamento.\n\n` +
+                        `━━━━━━━━━━━━━━━━━━\n\n` +
+                        `🛡️ **MOZ CONECTED** 🔥\n` +
+                        `✅ Segurança e transparência em todas as transações! 📲`;
+
+                    await sock.sendMessage(from, { text: msgDuplicado }, { quoted: mek });
+                    return;
+                }
+
+                // Salva o ID como usado
+                saveComprovativoUsado(comprovativoDados.transactionId);
+
                 const msgSucesso = `🚨💳 **COMPROVATIVO DETECTADO** 💳🚨\n\n` +
                     `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
                     `📋 **DETALHES DA TRANSAÇÃO**\n\n` +
