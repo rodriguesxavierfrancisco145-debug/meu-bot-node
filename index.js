@@ -165,7 +165,7 @@ async function startBot() {
         const command = args.shift().toLowerCase();
 
         // ----------------------------------------------------
-        // VERIFICAÇÃO DE IMAGEM (COMPROVATIVO)
+        // VERIFICAÇÃO DE COMPROVATIVO (IMAGEM, DOCUMENTO OU TEXTO)
         // ----------------------------------------------------
         if (messageType === 'imageMessage' || messageType === 'documentMessage') {
             try {
@@ -217,6 +217,30 @@ async function startBot() {
                 }
             } catch (err) {
                 console.error('Erro ao processar imagem:', err);
+            }
+        } else if (body && (body.toUpperCase().includes('CONFIRMADO') || body.toUpperCase().includes('RECEBESTE'))) {
+            // Processa também se o usuário enviar o comprovativo colado em formato de texto direto
+            const comprovativoDados = processarComprovativo(body);
+
+            if (comprovativoDados.isValido) {
+                const msgSucesso = `🚨💳 **COMPROVATIVO DETECTADO** 💳🚨\n\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                    `📋 **DETALHES DA TRANSAÇÃO**\n\n` +
+                    `👤 **Destinatário:** ${comprovativoDados.destinatario}\n\n` +
+                    `📲 **Receptor:** ${comprovativoDados.receptor}\n\n` +
+                    `💰 **Valor:** ${comprovativoDados.valor}\n\n` +
+                    `🆔 **ID da Transação:** ${comprovativoDados.transactionId}\n\n` +
+                    `📅 **Data:** ${comprovativoDados.data}\n\n` +
+                    `⏰ **Hora:** ${comprovativoDados.hora}\n\n` +
+                    `📌 **Estado:** ⏳ Em verificação\n\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                    `⚠️ **ATENÇÃO!**\n\n` +
+                    `🔎 O comprovativo foi recebido e está a ser analisado para confirmar a autenticidade da transação.\n\n` +
+                    `❌ **NÃO CONFIRME O PAGAMENTO ANTES DE VERIFICAR A ENTRADA DO VALOR NA CONTA.**\n\n` +
+                    `🛡️ **MOZ CONECTED** 🔥\n` +
+                    `💯 Segurança, confiança e transparência! 🚀`;
+
+                await sock.sendMessage(from, { text: msgSucesso }, { quoted: mek });
             }
         }
 
@@ -407,7 +431,7 @@ async function startBot() {
 function processarComprovativo(rawText) {
     const text = rawText.toUpperCase();
 
-    const temMpesa = text.includes('M-PESA') || text.includes('CONFIRMADO') || text.includes('TRANSFERIDO') || text.includes('PAGO');
+    const temMpesa = text.includes('M-PESA') || text.includes('CONFIRMADO') || text.includes('TRANSFERIDO') || text.includes('PAGO') || text.includes('RECEBESTE');
     const temMoeda = text.includes('MT') || text.includes('MZN');
 
     const transactionMatch = text.match(/([A-Z0-9]{10,12})/);
