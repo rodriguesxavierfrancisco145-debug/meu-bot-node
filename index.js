@@ -434,27 +434,72 @@ function processarComprovativo(rawText) {
     const temMpesa = text.includes('M-PESA') || text.includes('CONFIRMADO') || text.includes('TRANSFERIDO') || text.includes('PAGO') || text.includes('RECEBESTE');
     const temMoeda = text.includes('MT') || text.includes('MZN');
 
-    const transactionMatch = text.match(/([A-Z0-9]{10,12})/);
-    const valorMatch = text.match(/(\d+[\.,]?\d*)\s*(MT|MZN)/);
-    const dataMatch = text.match(/(\d{2}[\/\.-]\d{2}[\/\.-]\d{2,4})/);
-    const horaMatch = text.match(/(\d{2}:\d{2}(:\d{2})?)/);
+    // Procura especificamente o código de transação após a palavra "CONFIRMADO" (ex: DJP8M321LD6)
+    let transactionId = 'N/A';
+    const txMatch = text.match(/CONFIRMADO\s+([A-Z0-9]{10,12})/);
+    if (txMatch) {
+        transactionId = txMatch[1];
+    } else {
+        const fallbackTx = text.match(/([A-Z0-9]{10,12})/);
+        if (fallbackTx) transactionId = fallbackTx[1];
+    }
 
-    if (!temMpesa || !temMoeda || !transactionMatch) {
+    // Extrai o valor correto (ex: 100.00MT ou 100MT)
+    let valorStr = 'Confirmado';
+    const valorMatch = text.match(/([\d\.,]+)\s*(MT|MZN)/);
+    if (valorMatch) {
+        valorStr = `${valorMatch[1]} MT`;
+    }
+
+    // Extrai a data (ex: 25/10/26)
+    const dataMatch = text.match(/(\d{2}[\/\.-]\d{2}[\/\.-]\d{2,4})/);
+
+    // Extrai a hora corretamente (mesmo formato AM/PM como "8:13 PM")
+    let horaStr = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+    const horaMatch = text.match(/(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+    if (horaMatch) {
+        let rawHora = horaMatch[1].trim();
+        if (rawHora.toUpperCase().includes('PM')) {
+            let partes = rawHora.replace(/PM/i, '').trim().split(':');
+            let h = parseInt(partes[0]);
+            let m = partes[1];
+            if (h < 12) h += 12;
+            horaStr = `${h}:${m}`;
+        } else if (rawHora.toUpperCase().includes('AM')) {
+            let partes = rawHora.replace(/AM/i, '').trim().split(':');
+            let h = parseInt(partes[0]);
+            let m = partes[1];
+            if (h === 12) h = 0;
+            horaStr = `${h < 10 ? '0' + h : h}:${m}`;
+        } else {
+            horaStr = rawHora;
+        }
+    }
+
+    if (!temMpesa || !temMoeda || transactionId === 'N/A') {
         return { isValido: false };
     }
 
+    // Extrai o destinatário/remetente (ex: de 913770 - SIMO)
     let destinatario = 'Cliente M-Pesa';
-    let receptor = 'Rodrigues';
+    const deMatch = text.match(/(?:DE|PARA)\s+([0-9\s\-]+[\–\-]?[A-Z\s]+)/);
+    if (deMatch) {
+        destinatario = deMatch[1].trim();
+    } else {
+        const simoMatch = text.match(/([0-9]+\s*[\-\–]\s*[A-Z\s]+)/);
+        if (simoMatch) destinatario = simoMatch[1].trim();
+    }
 
+    let receptor = 'Rodrigues';
     const rodMatch = text.match(/(RODRIGUES[A-Z\s]*)/);
     if (rodMatch) receptor = rodMatch[0].trim();
 
     return {
         isValido: true,
-        transactionId: transactionMatch ? transactionMatch[1] : 'N/A',
-        valor: valorMatch ? `${valorMatch[1]} MT` : 'Confirmado',
+        transactionId: transactionId,
+        valor: valorStr,
         data: dataMatch ? dataMatch[1] : new Date().toLocaleDateString('pt-PT'),
-        hora: horaMatch ? horaMatch[1] : new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+        hora: horaStr,
         destinatario: destinatario,
         receptor: receptor
     };
