@@ -14,7 +14,7 @@ const path = require('path');
 
 // Limpar a pasta de sessão antiga no arranque para forçar um código novo válido
 const authFolder = path.join(__dirname, 'auth_info');
-if (!sock_startup_cleaned && fs.existsSync(authFolder)) {
+if (!global.sock_startup_cleaned && fs.existsSync(authFolder)) {
     try {
         fs.rmSync(authFolder, { recursive: true, force: true });
         console.log('🧹 Sessão anterior limpa com sucesso para gerar um código fresco!');
@@ -22,7 +22,7 @@ if (!sock_startup_cleaned && fs.existsSync(authFolder)) {
         console.log('⚠️ Aviso ao limpar sessão:', e);
     }
 }
-var sock_startup_cleaned = true;
+global.sock_startup_cleaned = true;
 
 // Arquivo JSON para guardar o histórico do ranking
 const RANKING_FILE = path.join(__dirname, 'ranking.json');
@@ -81,7 +81,7 @@ async function startBot() {
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }))
         },
         printQRInTerminal: false,
-        browser: ["Chrome (Linux)", "", ""]
+        browser: ['Ubuntu', 'Chrome', '22.04.4']
     });
 
     // Se ainda não estiver registado, gera o código de pareamento automaticamente para os logs do Render com o teu número
@@ -98,7 +98,7 @@ async function startBot() {
             } catch (err) {
                 console.error('❌ Erro ao gerar o código de pareamento:', err);
             }
-        }, 4000);
+        }, 5000);
     }
 
     sock.ev.on('creds.update', saveCreds);
