@@ -12,6 +12,18 @@ const Tesseract = require('tesseract.js');
 const fs = require('fs');
 const path = require('path');
 
+// Limpar a pasta de sessão antiga no arranque para forçar um código novo válido
+const authFolder = path.join(__dirname, 'auth_info');
+if (!sock_startup_cleaned && fs.existsSync(authFolder)) {
+    try {
+        fs.rmSync(authFolder, { recursive: true, force: true });
+        console.log('🧹 Sessão anterior limpa com sucesso para gerar um código fresco!');
+    } catch (e) {
+        console.log('⚠️ Aviso ao limpar sessão:', e);
+    }
+}
+var sock_startup_cleaned = true;
+
 // Arquivo JSON para guardar o histórico do ranking
 const RANKING_FILE = path.join(__dirname, 'ranking.json');
 
