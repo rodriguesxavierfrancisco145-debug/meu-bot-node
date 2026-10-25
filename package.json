@@ -1,0 +1,13 @@
+{
+  "name": "meu-bot",
+  "version": "1.0.0",
+  "description": "Bot no Render",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.5",
+    "pino": "^8.0.0"
+  }
+}
