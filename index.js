@@ -25,11 +25,14 @@ if (!global.sock_startup_cleaned && fs.existsSync(authFolder)) {
 }
 global.sock_startup_cleaned = true;
 
-// Arquivo JSON para guardar o histórico do ranking
+// Ficheiro JSON para guardar o histórico do ranking (persistente)
 const RANKING_FILE = path.join(__dirname, 'ranking.json');
 
-// Arquivo JSON para guardar os comprovativos já utilizados
+// Ficheiro JSON para guardar os comprovativos já utilizados
 const COMPROVATIVOS_FILE = path.join(__dirname, 'comprovativos_usados.json');
+
+// Ficheiro JSON para guardar os comandos adicionados dinamicamente via WhatsApp
+const COMMANDS_FILE = path.join(__dirname, 'comandos_personalizados.json');
 
 // Função para carregar dados do ranking
 function loadRanking() {
@@ -44,7 +47,7 @@ function loadRanking() {
     }
 }
 
-// Função para salvar dados do ranking
+// Função para salvar dados do ranking permanentemente
 function saveRanking(data) {
     fs.writeFileSync(RANKING_FILE, JSON.stringify(data, null, 2));
 }
@@ -69,6 +72,26 @@ function saveComprovativoUsado(txId) {
         usados.push(txId);
         fs.writeFileSync(COMPROVATIVOS_FILE, JSON.stringify(usados, null, 2));
     }
+}
+
+// Função para carregar comandos personalizados
+function loadCustomCommands() {
+    if (!fs.existsSync(COMMANDS_FILE)) {
+        fs.writeFileSync(COMMANDS_FILE, JSON.stringify({}));
+    }
+    try {
+        const data = fs.readFileSync(COMMANDS_FILE);
+        return JSON.parse(data);
+    } catch (e) {
+        return {};
+    }
+}
+
+// Função para salvar um novo comando permanentemente
+function saveCustomCommand(keyword, responseText) {
+    const commands = loadCustomCommands();
+    commands[keyword.toLowerCase()] = responseText;
+    fs.writeFileSync(COMMANDS_FILE, JSON.stringify(commands, null, 2));
 }
 
 // Auxiliar para converter texto em MB (ex: "440MB" -> 440, "1.5GB" -> 1536)
@@ -364,6 +387,45 @@ async function startBot() {
 
                 await sock.sendMessage(from, { text: msgSucesso }, { quoted: mek });
             }
+        }
+
+        // ----------------------------------------------------
+        // NOVO: ADICIONAR COMANDOS DIRETAMENTE VIA WHATSAPP (PERMANENTE)
+        // Exemplo: !addcmd !regras Respeitem o grupo e evitem spam.
+        // ----------------------------------------------------
+        if (command === '.addcmd' || command === '!addcmd' || command === 'addcmd') {
+            if (isGroup && !(await isAdmin(sock, from, sender))) {
+                await sock.sendMessage(from, { text: '❌ Apenas administradores podem adicionar novos comandos!' }, { quoted: mek });
+                return;
+            }
+
+            const novoComando = args.shift();
+            const respostaTexto = args.join(' ');
+
+            if (!novoComando || !respostaTexto) {
+                await sock.sendMessage(from, { text: '⚠️ Uso incorreto!\nExemplo: !addcmd !regras Respeitem todos os membros.' }, { quoted: mek });
+                return;
+            }
+
+            saveCustomCommand(novoComando, respostaTexto);
+            await sock.sendMessage(from, { text: `✅ Comando *${novoComando}* adicionado com sucesso e guardado permanentemente! 🚀` }, { quoted: mek });
+            return;
+        }
+
+        // Verificar se foi disparado um comando personalizado guardado no ficheiro
+        const customCommands = loadCustomCommands();
+        const fullCommandWithPrefix = `.${command}`;
+        const exactCommandWithExclamation = `!${command}`;
+        
+        if (customCommands[command]) {
+            await sock.sendMessage(from, { text: customCommands[command] }, { quoted: mek });
+            return;
+        } else if (customCommands[fullCommandWithPrefix]) {
+            await sock.sendMessage(from, { text: customCommands[fullCommandWithPrefix] }, { quoted: mek });
+            return;
+        } else if (customCommands[exactCommandWithExclamation]) {
+            await sock.sendMessage(from, { text: customCommands[exactCommandWithExclamation] }, { quoted: mek });
+            return;
         }
 
         switch (command) {
