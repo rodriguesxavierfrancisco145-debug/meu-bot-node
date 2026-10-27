@@ -283,8 +283,14 @@ async function startBot() {
                     const usados = loadComprovativosUsados();
                     if (usados.includes(comprovativoDados.transactionId)) {
                         const msgDuplicado = `⚠️🚫 COMPROVATIVO JÁ UTILIZADO 🚫⚠️\n\n` +
+                            `━━━━━━━━━━━━━━━━━━\n\n` +
                             `❌ Este comprovativo já foi utilizado anteriormente no sistema!\n\n` +
-                            `🛡️ MOZ CONECTED 🔥`;
+                            `🔍 Status: Comprovativo duplicado\n` +
+                            `⛔ Resultado: Pagamento não validado\n\n` +
+                            `⚠️ Por favor, envie um comprovativo válido e ainda não utilizado para que possamos verificar o seu pagamento.\n\n` +
+                            `━━━━━━━━━━━━━━━━━━\n\n` +
+                            `🛡️ MOZ CONECTED 🔥\n` +
+                            `✅ Segurança e transparência em todas as transações! 📲`;
                         await sock.sendMessage(from, { text: msgDuplicado }, { quoted: mek });
                         return;
                     }
@@ -292,14 +298,21 @@ async function startBot() {
                     saveComprovativoUsado(comprovativoDados.transactionId);
 
                     const msgSucesso = `🚨💳 COMPROVATIVO DETECTADO 💳🚨\n\n` +
-                        `👤 Destinatário: ${comprovativoDados.destinatario}\n` +
-                        `📲 Receptor: ${comprovativoDados.receptor}\n` +
-                        `💰 Valor: ${comprovativoDados.valor}\n` +
-                        `🆔 ID da Transação: ${comprovativoDados.transactionId}\n` +
-                        `📅 Data: ${comprovativoDados.data} | ⏰ Hora: ${comprovativoDados.hora}\n` +
+                        `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                        `📋 DETALHES DA TRANSAÇÃO\n\n` +
+                        `👤 Destinatário: ${comprovativoDados.destinatario}\n\n` +
+                        `📲 Receptor: ${comprovativoDados.receptor}\n\n` +
+                        `💰 Valor: ${comprovativoDados.valor}\n\n` +
+                        `🆔 ID da Transação: ${comprovativoDados.transactionId}\n\n` +
+                        `📅 Data: ${comprovativoDados.data}\n\n` +
+                        `⏰ Hora: ${comprovativoDados.hora}\n\n` +
                         `📌 Estado: ⏳ Em verificação\n\n` +
-                        `⚠️ NÃO CONFIRME O PAGAMENTO ANTES DE VERIFICAR A ENTRADA NA CONTA.\n` +
-                        `🛡️ MOZ CONECTED 🔥`;
+                        `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                        `⚠️ ATENÇÃO!\n\n` +
+                        `🔎 O comprovativo foi recebido e está a ser analisado para confirmar a autenticidade da transação.\n\n` +
+                        `❌ NÃO CONFIRME O PAGAMENTO ANTES DE VERIFICAR A ENTRADA DO VALOR NA CONTA.\n\n` +
+                        `🛡️ MOZ CONECTED 🔥\n` +
+                        `💯 Segurança, confiança e transparência! 🚀`;
 
                     await sock.sendMessage(from, { text: msgSucesso }, { quoted: mek });
                 } else {
@@ -317,17 +330,37 @@ async function startBot() {
             if (comprovativoDados.isValido) {
                 const usados = loadComprovativosUsados();
                 if (usados.includes(comprovativoDados.transactionId)) {
-                    await sock.sendMessage(from, { text: '⚠️🚫 Este comprovativo já foi utilizado anteriormente!' }, { quoted: mek });
+                    const msgDuplicado = `⚠️🚫 COMPROVATIVO JÁ UTILIZADO 🚫⚠️\n\n` +
+                        `━━━━━━━━━━━━━━━━━━\n\n` +
+                        `❌ Este comprovativo já foi utilizado anteriormente no sistema!\n\n` +
+                        `🔍 Status: Comprovativo duplicado\n` +
+                        `⛔ Resultado: Pagamento não validado\n\n` +
+                        `⚠️ Por favor, envie um comprovativo válido e ainda não utilizado para que possamos verificar o seu pagamento.\n\n` +
+                        `━━━━━━━━━━━━━━━━━━\n\n` +
+                        `🛡️ MOZ CONECTED 🔥\n` +
+                        `✅ Segurança e transparência em todas as transações! 📲`;
+                    await sock.sendMessage(from, { text: msgDuplicado }, { quoted: mek });
                     return;
                 }
 
                 saveComprovativoUsado(comprovativoDados.transactionId);
 
                 const msgSucesso = `🚨💳 COMPROVATIVO DETECTADO 💳🚨\n\n` +
-                    `💰 Valor: ${comprovativoDados.valor}\n` +
-                    `🆔 ID: ${comprovativoDados.transactionId}\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                    `📋 DETALHES DA TRANSAÇÃO\n\n` +
+                    `👤 Destinatário: ${comprovativoDados.destinatario}\n\n` +
+                    `📲 Receptor: ${comprovativoDados.receptor}\n\n` +
+                    `💰 Valor: ${comprovativoDados.valor}\n\n` +
+                    `🆔 ID da Transação: ${comprovativoDados.transactionId}\n\n` +
+                    `📅 Data: ${comprovativoDados.data}\n\n` +
+                    `⏰ Hora: ${comprovativoDados.hora}\n\n` +
                     `📌 Estado: ⏳ Em verificação\n\n` +
-                    `🛡️ MOZ CONECTED 🔥`;
+                    `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                    `⚠️ ATENÇÃO!\n\n` +
+                    `🔎 O comprovativo foi recebido e está a ser analisado para confirmar a autenticidade da transação.\n\n` +
+                    `❌ NÃO CONFIRME O PAGAMENTO ANTES DE VERIFICAR A ENTRADA DO VALOR NA CONTA.\n\n` +
+                    `🛡️ MOZ CONECTED 🔥\n` +
+                    `💯 Segurança, confiança e transparência! 🚀`;
 
                 await sock.sendMessage(from, { text: msgSucesso }, { quoted: mek });
             }
