@@ -23,7 +23,7 @@ app.get('/', (req, res) => {
     res.send('🔥 MOZ CONECTED BOT ESTÁ ONLINE 24H! 🚀');
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Servidor HTTP a correr na porta ${PORT}`);
 });
 
