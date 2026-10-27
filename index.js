@@ -107,7 +107,7 @@ async function isAdmin(sock, chatId, participantJid) {
 }
 
 // ==========================================
-// SERVIDOR WEB HTTP (ESSENCIAL PARA O RENDER)
+// SERVIDOR WEB HTTP (CORRIGIDO CONTRA EADDRINUSE)
 // ==========================================
 function startWebServer() {
     const app = express();
@@ -117,8 +117,16 @@ function startWebServer() {
         res.send('🔥 MOZ CONECTED BOT ESTÁ ONLINE 24H! 🚀');
     });
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
         console.log(`🌐 Servidor HTTP ativo e escutando na porta ${PORT}`);
+    });
+
+    server.on('error', (e) => {
+        if (e.code === 'EADDRINUSE') {
+            console.log(`⚠️ A porta ${PORT} já está em uso. Ignorando conflito para evitar crash.`);
+        } else {
+            console.error('Erro no servidor HTTP:', e);
+        }
     });
 }
 
