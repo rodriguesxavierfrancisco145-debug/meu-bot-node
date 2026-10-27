@@ -11,6 +11,21 @@ const cron = require('node-cron');
 const Tesseract = require('tesseract.js');
 const fs = require('fs');
 const path = require('path');
+const express = require('express'); // 🌐 Adicionado para manter o bot acordado no Render
+
+// ==========================================
+// SERVIDOR WEB HTTP (ESSENCIAL PARA O RENDER)
+// ==========================================
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+    res.send('🔥 MOZ CONECTED BOT ESTÁ ONLINE 24H! 🚀');
+});
+
+app.listen(PORT, () => {
+    console.log(`🌐 Servidor HTTP a correr na porta ${PORT}`);
+});
 
 // Limpar a pasta de sessão antiga no arranque para forçar um código novo válido
 const authFolder = path.join(__dirname, 'auth_info');
@@ -211,7 +226,6 @@ async function startBot() {
                 const userIsAdmin = await isAdmin(sock, from, sender);
                 if (!userIsAdmin) {
                     try {
-                        // Apaga a mensagem enviada pelo usuário comum
                         await sock.sendMessage(from, {
                             delete: {
                                 remoteJid: from,
@@ -221,19 +235,16 @@ async function startBot() {
                             }
                         });
                     } catch (e) {
-                        console.log('Erro ao apagar link (certifique-se que o bot é admin):', e);
+                        console.log('Erro ao apagar link:', e);
                     }
 
                     const msgAntiLink = `🚫🔒 AVISO IMPORTANTE — MOZ CONECTED 🔒🚫\n\n` +
                         `━━━━━━━━━━━━━━━━━━\n\n` +
                         `⚠️ É ESTRITAMENTE PROIBIDO ENVIAR LINKS NO GRUPO! 🚫🔗\n\n` +
                         `❌ Não envie links de outros grupos.\n` +
-                        `❌ Não compartilhe links de sites ou canais sem autorização.\n` +
-                        `❌ Evite mensagens que possam atrapalhar a organização do grupo.\n\n` +
-                        `📢 ATENÇÃO! O incumprimento desta regra poderá resultar na remoção da mensagem ou na expulsão do membro. ⚠️\n\n` +
-                        `━━━━━━━━━━━━━━━━━━\n\n` +
-                        `🤝 Vamos manter o grupo organizado, seguro e focado no nosso objetivo! 💯🔥\n\n` +
-                        `👑 MOZ CONECTED — Organização e respeito em primeiro lugar! 🔥`;
+                        `❌ Não compartilhe links de sites ou canais sem autorização.\n\n` +
+                        `📢 O incumprimento poderá resultar na expulsão! ⚠️\n\n` +
+                        `👑 MOZ CONECTED — Organização e respeito! 🔥`;
 
                     await sock.sendMessage(from, { text: msgAntiLink }, { quoted: mek });
                     return;
@@ -263,15 +274,8 @@ async function startBot() {
                     const usados = loadComprovativosUsados();
                     if (usados.includes(comprovativoDados.transactionId)) {
                         const msgDuplicado = `⚠️🚫 COMPROVATIVO JÁ UTILIZADO 🚫⚠️\n\n` +
-                            `━━━━━━━━━━━━━━━━━━\n\n` +
                             `❌ Este comprovativo já foi utilizado anteriormente no sistema!\n\n` +
-                            `🔍 Status: Comprovativo duplicado\n` +
-                            `⛔ Resultado: Pagamento não validado\n\n` +
-                            `⚠️ Por favor, envie um comprovativo válido e ainda não utilizado para que possamos verificar o seu pagamento.\n\n` +
-                            `━━━━━━━━━━━━━━━━━━\n\n` +
-                            `🛡️ MOZ CONECTED 🔥\n` +
-                            `✅ Segurança e transparência em todas as transações! 📲`;
-
+                            `🛡️ MOZ CONECTED 🔥`;
                         await sock.sendMessage(from, { text: msgDuplicado }, { quoted: mek });
                         return;
                     }
@@ -279,35 +283,20 @@ async function startBot() {
                     saveComprovativoUsado(comprovativoDados.transactionId);
 
                     const msgSucesso = `🚨💳 COMPROVATIVO DETECTADO 💳🚨\n\n` +
-                        `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                        `📋 DETALHES DA TRANSAÇÃO\n\n` +
-                        `👤 Destinatário: ${comprovativoDados.destinatario}\n\n` +
-                        `📲 Receptor: ${comprovativoDados.receptor}\n\n` +
-                        `💰 Valor: ${comprovativoDados.valor}\n\n` +
-                        `🆔 ID da Transação: ${comprovativoDados.transactionId}\n\n` +
-                        `📅 Data: ${comprovativoDados.data}\n\n` +
-                        `⏰ Hora: ${comprovativoDados.hora}\n\n` +
+                        `👤 Destinatário: ${comprovativoDados.destinatario}\n` +
+                        `📲 Receptor: ${comprovativoDados.receptor}\n` +
+                        `💰 Valor: ${comprovativoDados.valor}\n` +
+                        `🆔 ID da Transação: ${comprovativoDados.transactionId}\n` +
+                        `📅 Data: ${comprovativoDados.data} | ⏰ Hora: ${comprovativoDados.hora}\n` +
                         `📌 Estado: ⏳ Em verificação\n\n` +
-                        `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                        `⚠️ ATENÇÃO!\n\n` +
-                        `🔎 O comprovativo foi recebido e está a ser analisado para confirmar a autenticidade da transação.\n\n` +
-                        `❌ NÃO CONFIRME O PAGAMENTO ANTES DE VERIFICAR A ENTRADA DO VALOR NA CONTA.\n\n` +
-                        `🛡️ MOZ CONECTED 🔥\n` +
-                        `💯 Segurança, confiança e transparência! 🚀`;
+                        `⚠️ NÃO CONFIRME O PAGAMENTO ANTES DE VERIFICAR A ENTRADA NA CONTA.\n` +
+                        `🛡️ MOZ CONECTED 🔥`;
 
                     await sock.sendMessage(from, { text: msgSucesso }, { quoted: mek });
                 } else {
                     const msgFalso = `🚨❌ COMPROVATIVO FALSO DETECTADO! ❌🚨\n` +
-                        `━━━━━━━━━━━━━━━━━━\n` +
-                        `⚠️ Ei, mano! 😤📢\n` +
-                        `💳 O teu comprovativo de pagamento não foi confirmado!\n` +
-                        `❌ Não tentes enganar o sistema com comprovativos falsos ou editados.\n` +
-                        `🔎 Todos os pagamentos são verificados antes da confirmação.\n` +
-                        `🚫 PAGAMENTO NÃO CONFIRMADO = SERVIÇO NÃO DISPONIBILIZADO!\n` +
-                        `━━━━━━━━━━━━━━━━━━\n` +
-                        `🔐 MOZ CONECTED 🔥\n` +
-                        `✅ Segurança • Confiança • Transparência`;
-
+                        `💳 O teu comprovativo não foi confirmado!\n` +
+                        `🚫 PAGAMENTO NÃO CONFIRMADO = SERVIÇO NÃO DISPONIBILIZADO!`;
                     await sock.sendMessage(from, { text: msgFalso }, { quoted: mek });
                 }
             } catch (err) {
@@ -319,38 +308,17 @@ async function startBot() {
             if (comprovativoDados.isValido) {
                 const usados = loadComprovativosUsados();
                 if (usados.includes(comprovativoDados.transactionId)) {
-                    const msgDuplicado = `⚠️🚫 COMPROVATIVO JÁ UTILIZADO 🚫⚠️\n\n` +
-                        `━━━━━━━━━━━━━━━━━━\n\n` +
-                        `❌ Este comprovativo já foi utilizado anteriormente no sistema!\n\n` +
-                        `🔍 Status: Comprovativo duplicado\n` +
-                        `⛔ Resultado: Pagamento não validado\n\n` +
-                        `⚠️ Por favor, envie um comprovativo válido e ainda não utilizado para que possamos verificar o seu pagamento.\n\n` +
-                        `━━━━━━━━━━━━━━━━━━\n\n` +
-                        `🛡️ MOZ CONECTED 🔥\n` +
-                        `✅ Segurança e transparência em todas as transações! 📲`;
-
-                    await sock.sendMessage(from, { text: msgDuplicado }, { quoted: mek });
+                    await sock.sendMessage(from, { text: '⚠️🚫 Este comprovativo já foi utilizado anteriormente!' }, { quoted: mek });
                     return;
                 }
 
                 saveComprovativoUsado(comprovativoDados.transactionId);
 
                 const msgSucesso = `🚨💳 COMPROVATIVO DETECTADO 💳🚨\n\n` +
-                    `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                    `📋 DETALHES DA TRANSAÇÃO\n\n` +
-                    `👤 Destinatário: ${comprovativoDados.destinatario}\n\n` +
-                    `📲 Receptor: ${comprovativoDados.receptor}\n\n` +
-                    `💰 Valor: ${comprovativoDados.valor}\n\n` +
-                    `🆔 ID da Transação: ${comprovativoDados.transactionId}\n\n` +
-                    `📅 Data: ${comprovativoDados.data}\n\n` +
-                    `⏰ Hora: ${comprovativoDados.hora}\n\n` +
+                    `💰 Valor: ${comprovativoDados.valor}\n` +
+                    `🆔 ID: ${comprovativoDados.transactionId}\n` +
                     `📌 Estado: ⏳ Em verificação\n\n` +
-                    `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                    `⚠️ ATENÇÃO!\n\n` +
-                    `🔎 O comprovativo foi recebido e está a ser analisado para confirmar a autenticidade da transação.\n\n` +
-                    `❌ NÃO CONFIRME O PAGAMENTO ANTES DE VERIFICAR A ENTRADA DO VALOR NA CONTA.\n\n` +
-                    `🛡️ MOZ CONECTED 🔥\n` +
-                    `💯 Segurança, confiança e transparência! 🚀`;
+                    `🛡️ MOZ CONECTED 🔥`;
 
                 await sock.sendMessage(from, { text: msgSucesso }, { quoted: mek });
             }
@@ -362,16 +330,12 @@ async function startBot() {
             case '!compra': {
                 const quotedContext = mek.message?.extendedTextMessage?.contextInfo;
                 if (!quotedContext || !quotedContext.participant) {
-                    await sock.sendMessage(from, { 
-                        text: '⚠️ Atenção: Responde à mensagem do cliente com o comando!\nExemplo: .compra 440MB ou .compra 1.5GB' 
-                    }, { quoted: mek });
+                    await sock.sendMessage(from, { text: '⚠️ Responde à mensagem do cliente com o comando!\nExemplo: .compra 440MB' }, { quoted: mek });
                     return;
                 }
 
                 if (args.length === 0) {
-                    await sock.sendMessage(from, { 
-                        text: '⚠️ Informa a quantidade comprada.\nExemplo: .compra 440MB ou .compra 1GB' 
-                    }, { quoted: mek });
+                    await sock.sendMessage(from, { text: '⚠️ Informa a quantidade comprada. Ex: .compra 440MB' }, { quoted: mek });
                     return;
                 }
 
@@ -381,9 +345,7 @@ async function startBot() {
                 const mbsComprados = parseDataToMB(inputData);
 
                 if (mbsComprados <= 0) {
-                    await sock.sendMessage(from, { 
-                        text: '❌ Formato inválido! Usa valores como: 440MB, 1GB, 770MB ou 2GB.' 
-                    }, { quoted: mek });
+                    await sock.sendMessage(from, { text: '❌ Formato inválido! Usa valores como: 440MB, 1GB.' }, { quoted: mek });
                     return;
                 }
 
@@ -412,10 +374,7 @@ async function startBot() {
                     `🏆 Posição no Ranking: #${posicao}º lugar\n\n` +
                     `👑 Obrigado por preferir a MOZ CONECTED! 🔥`;
 
-                await sock.sendMessage(from, { 
-                    text: msgCompra,
-                    mentions: [clienteJid]
-                }, { quoted: mek });
+                await sock.sendMessage(from, { text: msgCompra, mentions: [clienteJid] }, { quoted: mek });
                 break;
             }
 
@@ -430,9 +389,7 @@ async function startBot() {
                     return;
                 }
 
-                let rankingTxt = `🏆👑 RANKING DE CLIENTES - MOZ CONECTED 👑🏆\n\n` +
-                                 `━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
+                let rankingTxt = `🏆👑 RANKING DE CLIENTES - MOZ CONECTED 👑🏆\n\n`;
                 const mentions = [];
                 const topList = sortedRanking.slice(0, 10);
 
@@ -444,12 +401,8 @@ async function startBot() {
 
                     rankingTxt += `${medalha} #${index + 1} - @${user.numero}\n` +
                                   `   └ 💾 Total: ${formatData(user.totalMB)}\n\n`;
-
                     mentions.push(`${user.numero}@s.whatsapp.net`);
                 });
-
-                rankingTxt += `━━━━━━━━━━━━━━━━━━━━━━\n` +
-                              `🔥 Continua a comprar para subir no ranking e ter acesso a ofertas exclusivas! 🚀`;
 
                 await sock.sendMessage(from, { text: rankingTxt, mentions }, { quoted: mek });
                 break;
@@ -458,14 +411,7 @@ async function startBot() {
             case 'tabela':
             case '!tabela':
                 const tabelaTexto = `🔥📡 MOZ CONECTED 📡🔥\n\n` +
-                    `━━━━━━━━━━━━━━━━━━\n` +
-                    `📶 TABELA OFICIAL DE PREÇOS\n` +
-                    `🇲🇿 INTERNET VODACOM 🇲🇿\n` +
-                    `━━━━━━━━━━━━━━━━━━\n\n` +
-                    `💥 PREÇOS QUE CABEM NO SEU BOLSO! 💥\n\n` +
-                    `🚀 Internet rápida, segura e estável para estares sempre conectado!\n\n` +
-                    `📦 PACOTES DIÁRIOS\n` +
-                    `🎯 OFERTAS ESPECIAIS\n\n` +
+                    `📶 TABELA OFICIAL DE PREÇOS (VODACOM) 🇲🇿\n\n` +
                     `💰 4MT  — 130MB\n` +
                     `💰 7MT  — 360MB\n` +
                     `💰 10MT — 440MB\n` +
@@ -476,12 +422,7 @@ async function startBot() {
                     `💰 75MT — 3GB\n` +
                     `💰 100MT — 4GB\n` +
                     `💰 125MT — 5GB\n\n` +
-                    `━━━━━━━━━━━━━━━━━━\n` +
-                    `🔥 MOZ CONECTED 🔥\n` +
-                    `📲 Mais internet, menos gastos!\n` +
-                    `💯 Qualidade e preços acessíveis para todos!\n\n` +
-                    `📡 A tua conexão, a nossa prioridade! ❤️‍🔥`;
-                
+                    `🔥 MOZ CONECTED 🔥`;
                 await sock.sendMessage(from, { text: tabelaTexto }, { quoted: mek });
                 break;
 
@@ -490,19 +431,13 @@ async function startBot() {
             case '!pagamento':
                 const pagamentoTexto = `💳🔥 FORMAS DE PAGAMENTO 🔥💳\n\n` +
                     `━━━━━━━━━━━━━━━━━━\n\n` +
-                    `📱 M-PESA\n\n` +
+                    `📱 M-PESA\n` +
                     `💰 Número: 84 384 3479\n` +
-                    `👤 Nome: Rodrigues\n\n` +
-                    `━━━━━━━━━━━━━━━━━━\n\n` +
-                    `✅ PAGAMENTO FÁCIL, RÁPIDO E SEGURO! 🚀\n\n` +
-                    `⚠️ ATENÇÃO, CLIENTES!\n\n` +
-                    `📌 Após realizar o pagamento, envie o comprovativo de pagamento para confirmar a sua transação. 🧾✅\n\n` +
-                    `⚠️ MÉTODOS DE PAGAMENTO DISPONÍVEIS\n\n` +
-                    `📲 Neste momento, aceitamos pagamentos somente via M-Pesa.\n\n` +
-                    `🔜 Em breve, teremos também e-Mola, para facilitar ainda mais os vossos pagamentos!\n\n` +
-                    `🙏 Obrigado pela preferência e pela confiança! ❤️🔥\n\n` +
-                    `💯 A SUA SATISFAÇÃO É A NOSSA PRIORIDADE! 🚀`;
-
+                    `👤 Titular: Rodrigues\n\n` +
+                    `⚠️ Envie o comprovativo após o pagamento. 🧾✅\n\n` +
+                    `📌 Aceitamos apenas M-Pesa.\n` +
+                    `🔜 Em breve: e-Mola! 🚀\n\n` +
+                    `❤️🙏 Obrigado pela preferência! 🔥`;
                 await sock.sendMessage(from, { text: pagamentoTexto }, { quoted: mek });
                 break;
 
@@ -512,28 +447,18 @@ async function startBot() {
                     return;
                 }
 
-                const userIsAdmin = await isAdmin(sock, from, sender);
-                if (!userIsAdmin) {
-                    await sock.sendMessage(from, { text: '❌ Apenas os administradores do grupo podem usar este comando! 🚫' }, { quoted: mek });
+                if (!(await isAdmin(sock, from, sender))) {
+                    await sock.sendMessage(from, { text: '❌ Apenas os administradores podem usar este comando! 🚫' }, { quoted: mek });
                     return;
                 }
                 
                 const action = args[0] ? args[0].toLowerCase() : '';
-                
                 if (action === 'f') {
-                    try {
-                        await sock.groupSettingUpdate(from, 'announcement');
-                        await sock.sendMessage(from, { text: '🔒 Grupo fechado manualmente! 🔐' }, { quoted: mek });
-                    } catch (e) {
-                        await sock.sendMessage(from, { text: '❌ Erro: Certifica-te de que o bot é administrador do grupo.' }, { quoted: mek });
-                    }
+                    await sock.groupSettingUpdate(from, 'announcement');
+                    await sock.sendMessage(from, { text: '🔒 Grupo fechado manualmente! 🔐' }, { quoted: mek });
                 } else if (action === 'a') {
-                    try {
-                        await sock.groupSettingUpdate(from, 'not_announcement');
-                        await sock.sendMessage(from, { text: '🔓 Grupo aberto manualmente! ✅' }, { quoted: mek });
-                    } catch (e) {
-                        await sock.sendMessage(from, { text: '❌ Erro: Certifica-te de que o bot é administrador do grupo.' }, { quoted: mek });
-                    }
+                    await sock.groupSettingUpdate(from, 'not_announcement');
+                    await sock.sendMessage(from, { text: '🔓 Grupo aberto manualmente! ✅' }, { quoted: mek });
                 }
                 break;
         }
@@ -542,7 +467,6 @@ async function startBot() {
 
 function processarComprovativo(rawText) {
     const text = rawText.toUpperCase();
-
     const temMpesa = text.includes('M-PESA') || text.includes('CONFIRMADO') || text.includes('TRANSFERIDO') || text.includes('PAGO') || text.includes('RECEBESTE');
     const temMoeda = text.includes('MT') || text.includes('MZN');
 
@@ -562,7 +486,6 @@ function processarComprovativo(rawText) {
     }
 
     const dataMatch = text.match(/(\d{2}[\/\.-]\d{2}[\/\.-]\d{2,4})/);
-
     let horaStr = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', hour12: false });
     const horaMatch = text.match(/(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
     if (horaMatch) {
@@ -590,12 +513,7 @@ function processarComprovativo(rawText) {
 
     let destinatario = 'Cliente M-Pesa';
     const deMatch = text.match(/(?:DE|PARA)\s+([0-9\s\-]+[\–\-]?[A-Z\s]+)/);
-    if (deMatch) {
-        destinatario = deMatch[1].trim();
-    } else {
-        const simoMatch = text.match(/([0-9]+\s*[\-\–]\s*[A-Z\s]+)/);
-        if (simoMatch) destinatario = simoMatch[1].trim();
-    }
+    if (deMatch) destinatario = deMatch[1].trim();
 
     let receptor = 'Rodrigues';
     const rodMatch = text.match(/(RODRIGUES[A-Z\s]*)/);
