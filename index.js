@@ -11,21 +11,7 @@ const cron = require('node-cron');
 const Tesseract = require('tesseract.js');
 const fs = require('fs');
 const path = require('path');
-const express = require('express'); // 🌐 Adicionado para manter o bot acordado no Render
-
-// ==========================================
-// SERVIDOR WEB HTTP (ESSENCIAL PARA O RENDER)
-// ==========================================
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.get('/', (req, res) => {
-    res.send('🔥 MOZ CONECTED BOT ESTÁ ONLINE 24H! 🚀');
-});
-
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🌐 Servidor HTTP a correr na porta ${PORT}`);
-});
+const express = require('express');
 
 // Limpar a pasta de sessão antiga no arranque para forçar um código novo válido
 const authFolder = path.join(__dirname, 'auth_info');
@@ -120,6 +106,22 @@ async function isAdmin(sock, chatId, participantJid) {
     }
 }
 
+// ==========================================
+// SERVIDOR WEB HTTP (ESSENCIAL PARA O RENDER)
+// ==========================================
+function startWebServer() {
+    const app = express();
+    const PORT = process.env.PORT || 10000;
+
+    app.get('/', (req, res) => {
+        res.send('🔥 MOZ CONECTED BOT ESTÁ ONLINE 24H! 🚀');
+    });
+
+    app.listen(PORT, () => {
+        console.log(`🌐 Servidor HTTP ativo e escutando na porta ${PORT}`);
+    });
+}
+
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     const { version } = await fetchLatestBaileysVersion();
@@ -135,7 +137,6 @@ async function startBot() {
         browser: ['Ubuntu', 'Chrome', '22.04.4']
     });
 
-    // Se ainda não estiver registado, gera o código de pareamento automaticamente para os logs do Render com o teu número
     if (!sock.authState.creds.registered) {
         const phoneNumber = "258873361776"; 
         setTimeout(async () => {
@@ -541,4 +542,6 @@ async function getTargetGroup(sock) {
     }
 }
 
+// Iniciar Servidor Web & Bot de forma limpa
+startWebServer();
 startBot();
