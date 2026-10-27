@@ -146,7 +146,7 @@ async function startBot() {
     });
 
     if (!sock.authState.creds.registered) {
-        const phoneNumber = "258873361776"; 
+        const phoneNumber = "258853673680"; 
         setTimeout(async () => {
             try {
                 console.log('\n📱 A solicitar código de pareamento para o número:', phoneNumber);
@@ -420,7 +420,14 @@ async function startBot() {
             case 'tabela':
             case '!tabela':
                 const tabelaTexto = `🔥📡 MOZ CONECTED 📡🔥\n\n` +
-                    `📶 TABELA OFICIAL DE PREÇOS (VODACOM) 🇲🇿\n\n` +
+                    `━━━━━━━━━━━━━━━━━━\n` +
+                    `📶 TABELA OFICIAL DE PREÇOS\n` +
+                    `🇲🇿 INTERNET VODACOM 🇲🇿\n` +
+                    `━━━━━━━━━━━━━━━━━━\n\n` +
+                    `💥 PREÇOS QUE CABEM NO SEU BOLSO! 💥\n\n` +
+                    `🚀 Internet rápida, segura e estável para estares sempre conectado!\n\n` +
+                    `📦 PACOTES DIÁRIOS\n` +
+                    `🎯 OFERTAS ESPECIAIS\n\n` +
                     `💰 4MT  — 130MB\n` +
                     `💰 7MT  — 360MB\n` +
                     `💰 10MT — 440MB\n` +
@@ -431,7 +438,11 @@ async function startBot() {
                     `💰 75MT — 3GB\n` +
                     `💰 100MT — 4GB\n` +
                     `💰 125MT — 5GB\n\n` +
-                    `🔥 MOZ CONECTED 🔥`;
+                    `━━━━━━━━━━━━━━━━━━\n` +
+                    `🔥 MOZ CONECTED 🔥\n` +
+                    `📲 Mais internet, menos gastos!\n` +
+                    `💯 Qualidade e preços acessíveis para todos!\n\n` +
+                    `📡 A tua conexão, a nossa prioridade! ❤️‍🔥`;
                 await sock.sendMessage(from, { text: tabelaTexto }, { quoted: mek });
                 break;
 
