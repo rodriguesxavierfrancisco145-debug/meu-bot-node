@@ -539,29 +539,29 @@ async function startBot() {
 
             case 'tabela':
             case '!tabela':
-                const tabelaTexto = `🔥📡 MOZ CONECTED 📡🔥\n\n` +
+                const tabelaTexto = `🔥📡 MOZ CONECTED 📡🔥\n` +
                     `━━━━━━━━━━━━━━━━━━\n` +
                     `📶 TABELA OFICIAL DE PREÇOS\n` +
                     `🇲🇿 INTERNET VODACOM 🇲🇿\n` +
-                    `━━━━━━━━━━━━━━━━━━\n\n` +
+                    `━━━━━━━━━━━━━━━━━━\n` +
                     `💥 PREÇOS QUE CABEM NO SEU BOLSO! 💥\n\n` +
                     `🚀 Internet rápida, segura e estável para estares sempre conectado!\n\n` +
-                    `📦 PACOTES DIÁRIOS\n` +
-                    `🎯 OFERTAS ESPECIAIS\n\n` +
-                    `💰 4MT  — 130MB\n` +
-                    `💰 7MT  — 360MB\n` +
-                    `💰 10MT — 440MB\n` +
-                    `💰 15MT — 580MB\n` +
-                    `💰 18MT — 770MB\n` +
-                    `💰 24MT — 1GB\n` +
-                    `💰 48MT — 2GB\n` +
-                    `💰 75MT — 3GB\n` +
-                    `💰 100MT — 4GB\n` +
-                    `💰 125MT — 5GB\n\n` +
+                    `📦 PACOTES DIÁRIOS\n\n` +
+                    `🎯 OFERTAS ESPECIAIS\n` +
+                    `💰 4MT — 170MB\n` +
+                    `💰 7MT — 420MB\n` +
+                    `💰 10MT — 600MB\n` +
+                    `💰 15MT — 780MB\n` +
+                    `💰 18MT — 1GB\n` +
+                    `💰 24MT — 1.2GB\n` +
+                    `💰 48MT — 2.2GB\n` +
+                    `💰 75MT — 3.3GB\n` +
+                    `💰 100MT — 4.4GB\n` +
+                    `💰 125MT — 5.5GB\n` +
                     `━━━━━━━━━━━━━━━━━━\n` +
-                    `🔥 MOZ CONECTED 🔥\n` +
-                    `📲 Mais internet, menos gastos!\n` +
-                    `💯 Qualidade e preços acessíveis para todos!\n\n` +
+                    `🔥 MOZ CONECTED 🔥\n\n` +
+                    `📲 Mais internet, menos gastos!\n\n` +
+                    `💯 Qualidade e preços acessíveis para todos!\n` +
                     `📡 A tua conexão, a nossa prioridade! ❤️‍🔥`;
                 await sock.sendMessage(from, { text: tabelaTexto }, { quoted: mek });
                 break;
