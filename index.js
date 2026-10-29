@@ -5,7 +5,7 @@ const {
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
     downloadMediaMessage
-} = require('@whiskeysockets/baileys');
+} = require('@whisockets/baileys');
 const pino = require('pino');
 const cron = require('node-cron');
 const Tesseract = require('tesseract.js');
@@ -240,13 +240,18 @@ async function startBot() {
 
         const messageType = Object.keys(mek.message)[0];
         const body = messageType === 'conversation' ? mek.message.conversation :
-                     messageType === 'extendedTextMessage' ? mek.message.extendedTextMessage.text : '';
+                     messageType === 'extendedTextMessage' ? mek.message.extendedTextMessage.text :
+                     messageType === 'imageMessage' ? mek.message.imageMessage.caption :
+                     messageType === 'videoMessage' ? mek.message.videoMessage.caption : '';
 
         const from = mek.key.remoteJid;
         const sender = mek.key.participant || from;
         const isGroup = from.endsWith('@g.us');
-        const args = body.trim().split(/ +/);
-        const command = args.length > 0 ? args.shift().toLowerCase() : '';
+        
+        const args = body ? body.trim().split(/ +/) : [];
+        const rawCommand = args.length > 0 ? args.shift() : '';
+        // Normaliza o comando para ignorar maiúsculas/minúsculas e pontuação inicial (. ! /)
+        const command = rawCommand.toLowerCase().replace(/^[.!/]/, '');
 
         // ----------------------------------------------------
         // DETECTOR E BLOQUEIO DE LINKS EM GRUPOS
@@ -393,7 +398,7 @@ async function startBot() {
         // ADICIONAR COMANDOS DIRETAMENTE VIA WHATSAPP (PERMANENTE)
         // Exemplo: !addcmd !regras Respeitem o grupo e evitem spam.
         // ----------------------------------------------------
-        if (command === '.addcmd' || command === '!addcmd' || command === 'addcmd') {
+        if (command === 'addcmd') {
             if (isGroup && !(await isAdmin(sock, from, sender))) {
                 await sock.sendMessage(from, { text: '❌ Apenas administradores podem adicionar novos comandos!' }, { quoted: mek });
                 return;
@@ -414,24 +419,16 @@ async function startBot() {
 
         // Verificar se foi disparado um comando personalizado guardado no ficheiro
         const customCommands = loadCustomCommands();
-        const fullCommandWithPrefix = `.${command}`;
-        const exactCommandWithExclamation = `!${command}`;
-        
         if (customCommands[command]) {
             await sock.sendMessage(from, { text: customCommands[command] }, { quoted: mek });
             return;
-        } else if (customCommands[fullCommandWithPrefix]) {
-            await sock.sendMessage(from, { text: customCommands[fullCommandWithPrefix] }, { quoted: mek });
-            return;
-        } else if (customCommands[exactCommandWithExclamation]) {
-            await sock.sendMessage(from, { text: customCommands[exactCommandWithExclamation] }, { quoted: mek });
+        } else if (customCommands[rawCommand.toLowerCase()]) {
+            await sock.sendMessage(from, { text: customCommands[rawCommand.toLowerCase()] }, { quoted: mek });
             return;
         }
 
         switch (command) {
-            case '.compra':
-            case 'compra':
-            case '!compra': {
+            case 'compra': {
                 const quotedContext = mek.message?.extendedTextMessage?.contextInfo;
                 if (!quotedContext || !quotedContext.participant) {
                     await sock.sendMessage(from, { text: '⚠️ Responde à mensagem do cliente com o comando!\nExemplo: .compra 440MB' }, { quoted: mek });
@@ -482,9 +479,7 @@ async function startBot() {
                 break;
             }
 
-            case '.ranking':
-            case 'ranking':
-            case '!ranking': {
+            case 'ranking': {
                 // VERIFICAÇÃO SE É ADMIN (EXCLUSIVO PARA ADMS)
                 if (isGroup && !(await isAdmin(sock, from, sender))) {
                     await sock.sendMessage(from, { text: '❌ Apenas os administradores podem ver o ranking! 🚫' }, { quoted: mek });
@@ -518,9 +513,7 @@ async function startBot() {
                 break;
             }
 
-            case '.limpar':
-            case 'limpar':
-            case '!limpar': {
+            case 'limpar': {
                 // COMANDO DE LIMPAR O RANKING (EXCLUSIVO PARA ADMS)
                 if (isGroup && !(await isAdmin(sock, from, sender))) {
                     await sock.sendMessage(from, { text: '❌ Apenas os administradores podem limpar o ranking! 🚫' }, { quoted: mek });
@@ -528,7 +521,6 @@ async function startBot() {
                 }
 
                 try {
-                    // Limpa/Reseta o ranking.json guardando um objeto vazio
                     fs.writeFileSync(RANKING_FILE, JSON.stringify({}));
                     await sock.sendMessage(from, { text: '🧹🗑️ O ranking de clientes foi limpo com sucesso! Todos os dados foram reiniciados. 🔄' }, { quoted: mek });
                 } catch (e) {
@@ -538,7 +530,6 @@ async function startBot() {
             }
 
             case 'tabela':
-            case '!tabela':
                 const tabelaTexto = `🔥📡 MOZ CONECTED 📡🔥\n` +
                     `━━━━━━━━━━━━━━━━━━\n` +
                     `📶 TABELA OFICIAL DE PREÇOS\n` +
@@ -568,7 +559,6 @@ async function startBot() {
 
             case 'pagar':
             case 'pagamento':
-            case '!pagamento':
                 const pagamentoTexto = `💳🔥 FORMAS DE PAGAMENTO 🔥💳\n\n` +
                     `━━━━━━━━━━━━━━━━━━\n\n` +
                     `📱 M-PESA\n` +
