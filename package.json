@@ -6,7 +6,7 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "@whisockets/baileys": "6.7.0",
+    "@whiskeysockets/baileys": "github:WhiskeySockets/Baileys",
     "express": "^4.19.2",
     "node-cron": "^3.0.3",
     "pino": "^9.0.0",
