@@ -5,7 +5,7 @@ const {
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
     downloadMediaMessage
-} = require('@whisockets/baileys');
+} = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const cron = require('node-cron');
 const Tesseract = require('tesseract.js');
@@ -181,7 +181,7 @@ async function startBot() {
             } catch (err) {
                 console.error('❌ Erro ao gerar o código de pareamento:', err);
             }
-        }, 5000);
+        }, 4000);
     }
 
     sock.ev.on('creds.update', saveCreds);
@@ -250,7 +250,6 @@ async function startBot() {
         
         const args = body ? body.trim().split(/ +/) : [];
         const rawCommand = args.length > 0 ? args.shift() : '';
-        // Normaliza o comando para ignorar maiúsculas/minúsculas e pontuação inicial (. ! /)
         const command = rawCommand.toLowerCase().replace(/^[.!/]/, '');
 
         // ----------------------------------------------------
@@ -396,7 +395,6 @@ async function startBot() {
 
         // ----------------------------------------------------
         // ADICIONAR COMANDOS DIRETAMENTE VIA WHATSAPP (PERMANENTE)
-        // Exemplo: !addcmd !regras Respeitem o grupo e evitem spam.
         // ----------------------------------------------------
         if (command === 'addcmd') {
             if (isGroup && !(await isAdmin(sock, from, sender))) {
@@ -417,7 +415,6 @@ async function startBot() {
             return;
         }
 
-        // Verificar se foi disparado um comando personalizado guardado no ficheiro
         const customCommands = loadCustomCommands();
         if (customCommands[command]) {
             await sock.sendMessage(from, { text: customCommands[command] }, { quoted: mek });
@@ -480,7 +477,6 @@ async function startBot() {
             }
 
             case 'ranking': {
-                // VERIFICAÇÃO SE É ADMIN (EXCLUSIVO PARA ADMS)
                 if (isGroup && !(await isAdmin(sock, from, sender))) {
                     await sock.sendMessage(from, { text: '❌ Apenas os administradores podem ver o ranking! 🚫' }, { quoted: mek });
                     return;
@@ -514,7 +510,6 @@ async function startBot() {
             }
 
             case 'limpar': {
-                // COMANDO DE LIMPAR O RANKING (EXCLUSIVO PARA ADMS)
                 if (isGroup && !(await isAdmin(sock, from, sender))) {
                     await sock.sendMessage(from, { text: '❌ Apenas os administradores podem limpar o ranking! 🚫' }, { quoted: mek });
                     return;
@@ -671,6 +666,6 @@ async function getTargetGroup(sock) {
     }
 }
 
-// Iniciar Servidor Web & Bot de forma limpa
+// Iniciar Servidor Web & Bot diretamente no Index.js
 startWebServer();
 startBot();
