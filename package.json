@@ -1,12 +1,12 @@
 {
-  "name": "moz-conected-bot",
+  "name": "bot",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "@whisockets/baileys": "latest",
+    "@whisockets/baileys": "^6.7.9",
     "express": "^4.19.2",
     "node-cron": "^3.0.3",
     "pino": "^9.0.0",
