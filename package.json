@@ -1,9 +1,9 @@
 {
   "name": "bot-moz",
-  "version": "1.0.1",
-  "main": "index.js",
+  "version": "1.0.2",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "6.7.0",
