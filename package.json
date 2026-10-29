@@ -1,13 +1,12 @@
 {
   "name": "moz-conected-bot",
   "version": "1.0.0",
-  "description": "Bot WhatsApp Moz Conected",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "@whisockets/baileys": "^6.7.5",
+    "@whisockets/baileys": "latest",
     "express": "^4.19.2",
     "node-cron": "^3.0.3",
     "pino": "^9.0.0",
