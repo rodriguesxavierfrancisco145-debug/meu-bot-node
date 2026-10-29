@@ -5,7 +5,7 @@ const {
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
     downloadMediaMessage
-} = require('@whiskeysockets/baileys');
+} = require('@whisockets/baileys');
 const pino = require('pino');
 const cron = require('node-cron');
 const Tesseract = require('tesseract.js');
@@ -13,124 +13,8 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 
-// Limpar a pasta de sessão antiga no arranque para forçar um código novo válido
-const authFolder = path.join(__dirname, 'auth_info');
-if (!global.sock_startup_cleaned && fs.existsSync(authFolder)) {
-    try {
-        fs.rmSync(authFolder, { recursive: true, force: true });
-        console.log('🧹 Sessão anterior limpa com sucesso para gerar um código fresco!');
-    } catch (e) {
-        console.log('⚠️ Aviso ao limpar sessão:', e);
-    }
-}
-global.sock_startup_cleaned = true;
-
-// Ficheiro JSON para guardar o histórico do ranking (persistente)
-const RANKING_FILE = path.join(__dirname, 'ranking.json');
-
-// Ficheiro JSON para guardar os comprovativos já utilizados
-const COMPROVATIVOS_FILE = path.join(__dirname, 'comprovativos_usados.json');
-
-// Ficheiro JSON para guardar os comandos adicionados dinamicamente via WhatsApp
-const COMMANDS_FILE = path.join(__dirname, 'comandos_personalizados.json');
-
-// Função para carregar dados do ranking
-function loadRanking() {
-    if (!fs.existsSync(RANKING_FILE)) {
-        fs.writeFileSync(RANKING_FILE, JSON.stringify({}));
-    }
-    try {
-        const data = fs.readFileSync(RANKING_FILE);
-        return JSON.parse(data);
-    } catch (e) {
-        return {};
-    }
-}
-
-// Função para salvar dados do ranking permanentemente
-function saveRanking(data) {
-    fs.writeFileSync(RANKING_FILE, JSON.stringify(data, null, 2));
-}
-
-// Função para carregar comprovativos usados
-function loadComprovativosUsados() {
-    if (!fs.existsSync(COMPROVATIVOS_FILE)) {
-        fs.writeFileSync(COMPROVATIVOS_FILE, JSON.stringify([]));
-    }
-    try {
-        const data = fs.readFileSync(COMPROVATIVOS_FILE);
-        return JSON.parse(data);
-    } catch (e) {
-        return [];
-    }
-}
-
-// Função para salvar comprovativo usado
-function saveComprovativoUsado(txId) {
-    const usados = loadComprovativosUsados();
-    if (!usados.includes(txId)) {
-        usados.push(txId);
-        fs.writeFileSync(COMPROVATIVOS_FILE, JSON.stringify(usados, null, 2));
-    }
-}
-
-// Função para carregar comandos personalizados
-function loadCustomCommands() {
-    if (!fs.existsSync(COMMANDS_FILE)) {
-        fs.writeFileSync(COMMANDS_FILE, JSON.stringify({}));
-    }
-    try {
-        const data = fs.readFileSync(COMMANDS_FILE);
-        return JSON.parse(data);
-    } catch (e) {
-        return {};
-    }
-}
-
-// Função para salvar um novo comando permanentemente
-function saveCustomCommand(keyword, responseText) {
-    const commands = loadCustomCommands();
-    commands[keyword.toLowerCase()] = responseText;
-    fs.writeFileSync(COMMANDS_FILE, JSON.stringify(commands, null, 2));
-}
-
-// Auxiliar para converter texto em MB (ex: "440MB" -> 440, "1.5GB" -> 1536)
-function parseDataToMB(input) {
-    const regex = /^([\d\.,]+)\s*(MB|GB)?$/i;
-    const match = input.match(regex);
-    if (!match) return 0;
-
-    let value = parseFloat(match[1].replace(',', '.'));
-    const unit = (match[2] || 'MB').toUpperCase();
-
-    if (unit === 'GB') {
-        value = value * 1024;
-    }
-    return value;
-}
-
-// Auxiliar para formatar MBs acumulados em formato legível (MB / GB)
-function formatData(totalMB) {
-    if (totalMB >= 1024) {
-        const gb = (totalMB / 1024).toFixed(2);
-        return `${gb.replace('.', ',')} GB`;
-    }
-    return `${Math.round(totalMB)} MB`;
-}
-
-// Auxiliar para verificar se o remetente é administrador do grupo
-async function isAdmin(sock, chatId, participantJid) {
-    try {
-        const metadata = await sock.groupMetadata(chatId);
-        const participant = metadata.participants.find(p => p.id === participantJid);
-        return participant && (participant.admin === 'admin' || participant.admin === 'superadmin');
-    } catch (e) {
-        return false;
-    }
-}
-
 // ==========================================
-// SERVIDOR WEB HTTP (CORRIGIDO CONTRA EADDRINUSE)
+// SERVIDOR WEB HTTP (ESSENCIAL PARA O RENDER)
 // ==========================================
 function startWebServer() {
     const app = express();
@@ -146,11 +30,88 @@ function startWebServer() {
 
     server.on('error', (e) => {
         if (e.code === 'EADDRINUSE') {
-            console.log(`⚠️ A porta ${PORT} já está em uso. Ignorando conflito para evitar crash.`);
+            console.log(`⚠️ A porta ${PORT} já está em uso. Ignorando conflito.`);
         } else {
             console.error('Erro no servidor HTTP:', e);
         }
     });
+}
+
+// Limpar a pasta de sessão antiga no arranque para forçar um código novo válido
+const authFolder = path.join(__dirname, 'auth_info');
+if (!global.sock_startup_cleaned && fs.existsSync(authFolder)) {
+    try {
+        fs.rmSync(authFolder, { recursive: true, force: true });
+        console.log('🧹 Sessão anterior limpa com sucesso para gerar um código fresco!');
+    } catch (e) {
+        console.log('⚠️ Aviso ao limpar sessão:', e);
+    }
+}
+global.sock_startup_cleaned = true;
+
+// Ficheiros JSON persistentes
+const RANKING_FILE = path.join(__dirname, 'ranking.json');
+const COMPROVATIVOS_FILE = path.join(__dirname, 'comprovativos_usados.json');
+const COMMANDS_FILE = path.join(__dirname, 'comandos_personalizados.json');
+
+function loadRanking() {
+    if (!fs.existsSync(RANKING_FILE)) fs.writeFileSync(RANKING_FILE, JSON.stringify({}));
+    try { return JSON.parse(fs.readFileSync(RANKING_FILE)); } catch (e) { return {}; }
+}
+
+function saveRanking(data) {
+    fs.writeFileSync(RANKING_FILE, JSON.stringify(data, null, 2));
+}
+
+function loadComprovativosUsados() {
+    if (!fs.existsSync(COMPROVATIVOS_FILE)) fs.writeFileSync(COMPROVATIVOS_FILE, JSON.stringify([]));
+    try { return JSON.parse(fs.readFileSync(COMPROVATIVOS_FILE)); } catch (e) { return []; }
+}
+
+function saveComprovativoUsado(txId) {
+    const usados = loadComprovativosUsados();
+    if (!usados.includes(txId)) {
+        usados.push(txId);
+        fs.writeFileSync(COMPROVATIVOS_FILE, JSON.stringify(usados, null, 2));
+    }
+}
+
+function loadCustomCommands() {
+    if (!fs.existsSync(COMMANDS_FILE)) fs.writeFileSync(COMMANDS_FILE, JSON.stringify({}));
+    try { return JSON.parse(fs.readFileSync(COMMANDS_FILE)); } catch (e) { return {}; }
+}
+
+function saveCustomCommand(keyword, responseText) {
+    const commands = loadCustomCommands();
+    commands[keyword.toLowerCase()] = responseText;
+    fs.writeFileSync(COMMANDS_FILE, JSON.stringify(commands, null, 2));
+}
+
+function parseDataToMB(input) {
+    const regex = /^([\d\.,]+)\s*(MB|GB)?$/i;
+    const match = input.match(regex);
+    if (!match) return 0;
+    let value = parseFloat(match[1].replace(',', '.'));
+    const unit = (match[2] || 'MB').toUpperCase();
+    if (unit === 'GB') value = value * 1024;
+    return value;
+}
+
+function formatData(totalMB) {
+    if (totalMB >= 1024) {
+        return `${(totalMB / 1024).toFixed(2).replace('.', ',')} GB`;
+    }
+    return `${Math.round(totalMB)} MB`;
+}
+
+async function isAdmin(sock, chatId, participantJid) {
+    try {
+        const metadata = await sock.groupMetadata(chatId);
+        const participant = metadata.participants.find(p => p.id === participantJid);
+        return participant && (participant.admin === 'admin' || participant.admin === 'superadmin');
+    } catch (e) {
+        return false;
+    }
 }
 
 async function startBot() {
@@ -168,6 +129,7 @@ async function startBot() {
         browser: ['Ubuntu', 'Chrome', '22.04.4']
     });
 
+    // GERAÇÃO DO CÓDIGO DE PAREAMENTO PARA O NÚMERO EXATO
     if (!sock.authState.creds.registered) {
         const phoneNumber = "258853673680"; 
         setTimeout(async () => {
@@ -181,7 +143,7 @@ async function startBot() {
             } catch (err) {
                 console.error('❌ Erro ao gerar o código de pareamento:', err);
             }
-        }, 4000);
+        }, 5000);
     }
 
     sock.ev.on('creds.update', saveCreds);
@@ -202,18 +164,14 @@ async function startBot() {
     // ==========================================
     // AGENDAMENTOS AUTOMÁTICOS (CRON)
     // ==========================================
-
     cron.schedule('0 23 * * *', async () => {
         const targetGroup = await getTargetGroup(sock);
         if (targetGroup) {
             try {
                 await sock.groupSettingUpdate(targetGroup, 'announcement');
-                const msgFecho = `🔒🚨 AVISO DO GRUPO 🚨\n\n⚠️ Grupo fechado automaticamente até amanhã! 🔐\n\n🕚 Horário de fecho: 23h ⏰\n\n✅ O grupo será reaberto amanhã. Obrigado pela compreensão! ❤️👑`;
+                const msgFecho = `🔒🚨 AVISO DO GRUPO 🚨\n\n⚠️ Grupo fechado automaticamente até amanhã! 🔐\n\n🕚 Horário de fecho: 23h ⏰`;
                 await sock.sendMessage(targetGroup, { text: msgFecho });
-                console.log('Grupo fechado automaticamente às 23:00');
-            } catch (err) {
-                console.error('Erro ao fechar o grupo automaticamente:', err);
-            }
+            } catch (err) { console.error('Erro ao fechar grupo:', err); }
         }
     }, { timezone: "Africa/Maputo" });
 
@@ -222,12 +180,9 @@ async function startBot() {
         if (targetGroup) {
             try {
                 await sock.groupSettingUpdate(targetGroup, 'not_announcement');
-                const msgAberto = `🔓🔥 GRUPO ABERTO! 🔥\n\n⏰ Horário de abertura: 08h ✅\n\n💬 Podem voltar a interagir! Respeitem as regras e aproveitem o grupo. ❤️👑`;
+                const msgAberto = `🔓🔥 GRUPO ABERTO! 🔥\n\n⏰ Horário de abertura: 08h ✅`;
                 await sock.sendMessage(targetGroup, { text: msgAberto });
-                console.log('Grupo aberto automaticamente às 08:00');
-            } catch (err) {
-                console.error('Erro ao abrir o grupo automaticamente:', err);
-            }
+            } catch (err) { console.error('Erro ao abrir grupo:', err); }
         }
     }, { timezone: "Africa/Maputo" });
 
@@ -252,339 +207,117 @@ async function startBot() {
         const rawCommand = args.length > 0 ? args.shift() : '';
         const command = rawCommand.toLowerCase().replace(/^[.!/]/, '');
 
-        // ----------------------------------------------------
-        // DETECTOR E BLOQUEIO DE LINKS EM GRUPOS
-        // ----------------------------------------------------
+        // ANTI-LINK
         if (isGroup && body) {
             const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9]*\.(com|org|net|mz|br|pt|io|me|tk|ml|ga|cf|gq|cc|xyz)(\/[^\s]*)?)/i;
-            
             if (linkRegex.test(body)) {
-                const userIsAdmin = await isAdmin(sock, from, sender);
-                if (!userIsAdmin) {
+                if (!(await isAdmin(sock, from, sender))) {
                     try {
-                        await sock.sendMessage(from, {
-                            delete: {
-                                remoteJid: from,
-                                id: mek.key.id,
-                                participant: sender,
-                                fromMe: false
-                            }
-                        });
-                    } catch (e) {
-                        console.log('Erro ao apagar link:', e);
-                    }
-
-                    const msgAntiLink = `🚫🔒 AVISO IMPORTANTE — MOZ CONECTED 🔒🚫\n\n` +
-                        `━━━━━━━━━━━━━━━━━━\n\n` +
-                        `⚠️ É ESTRITAMENTE PROIBIDO ENVIAR LINKS NO GRUPO! 🚫🔗\n\n` +
-                        `❌ Não envie links de outros grupos.\n` +
-                        `❌ Não compartilhe links de sites ou canais sem autorização.\n\n` +
-                        `📢 O incumprimento poderá resultar na expulsão! ⚠️\n\n` +
-                        `👑 MOZ CONECTED — Organização e respeito! 🔥`;
-
-                    await sock.sendMessage(from, { text: msgAntiLink }, { quoted: mek });
+                        await sock.sendMessage(from, { delete: { remoteJid: from, id: mek.key.id, participant: sender, fromMe: false } });
+                    } catch (e) {}
+                    await sock.sendMessage(from, { text: `🚫🔒 Proibido enviar links no grupo, @${sender.split('@')[0]}! ⚠️`, mentions: [sender] }, { quoted: mek });
                     return;
                 }
             }
         }
 
-        // ----------------------------------------------------
-        // VERIFICAÇÃO DE COMPROVATIVO (IMAGEM, DOCUMENTO OU TEXTO)
-        // ----------------------------------------------------
+        // COMPROVATIVOS COM TESSERACT OCR
         if (messageType === 'imageMessage' || messageType === 'documentMessage') {
             try {
-                const buffer = await downloadMediaMessage(
-                    mek,
-                    'buffer',
-                    { },
-                    { 
-                        logger: pino({ level: 'silent' }),
-                        reconnect: async () => true
-                    }
-                );
-
+                const buffer = await downloadMediaMessage(mek, 'buffer', {}, { logger: pino({ level: 'silent' }) });
                 const { data: { text } } = await Tesseract.recognize(buffer, 'por');
                 const comprovativoDados = processarComprovativo(text);
 
                 if (comprovativoDados.isValido) {
                     const usados = loadComprovativosUsados();
                     if (usados.includes(comprovativoDados.transactionId)) {
-                        const msgDuplicado = `⚠️🚫 COMPROVATIVO JÁ UTILIZADO 🚫⚠️\n\n` +
-                            `━━━━━━━━━━━━━━━━━━\n\n` +
-                            `❌ Este comprovativo já foi utilizado anteriormente no sistema!\n\n` +
-                            `🔍 Status: Comprovativo duplicado\n` +
-                            `⛔ Resultado: Pagamento não validado\n\n` +
-                            `⚠️ Por favor, envie um comprovativo válido e ainda não utilizado para que possamos verificar o seu pagamento.\n\n` +
-                            `━━━━━━━━━━━━━━━━━━\n\n` +
-                            `🛡️ MOZ CONECTED 🔥\n` +
-                            `✅ Segurança e transparência em todas as transações! 📲`;
-                        await sock.sendMessage(from, { text: msgDuplicado }, { quoted: mek });
+                        await sock.sendMessage(from, { text: `⚠️🚫 Este comprovativo já foi utilizado anteriormente!` }, { quoted: mek });
                         return;
                     }
-
                     saveComprovativoUsado(comprovativoDados.transactionId);
-
-                    const msgSucesso = `🚨💳 COMPROVATIVO DETECTADO 💳🚨\n\n` +
-                        `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                        `📋 DETALHES DA TRANSAÇÃO\n\n` +
-                        `👤 Destinatário: ${comprovativoDados.destinatario}\n\n` +
-                        `📲 Receptor: ${comprovativoDados.receptor}\n\n` +
-                        `💰 Valor: ${comprovativoDados.valor}\n\n` +
-                        `🆔 ID da Transação: ${comprovativoDados.transactionId}\n\n` +
-                        `📅 Data: ${comprovativoDados.data}\n\n` +
-                        `⏰ Hora: ${comprovativoDados.hora}\n\n` +
-                        `📌 Estado: ⏳ Em verificação\n\n` +
-                        `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                        `⚠️ ATENÇÃO!\n\n` +
-                        `🔎 O comprovativo foi recebido e está a ser analisado para confirmar a autenticidade da transação.\n\n` +
-                        `❌ NÃO CONFIRME O PAGAMENTO ANTES DE VERIFICAR A ENTRADA DO VALOR NA CONTA.\n\n` +
-                        `🛡️ MOZ CONECTED 🔥\n` +
-                        `💯 Segurança, confiança e transparência! 🚀`;
-
-                    await sock.sendMessage(from, { text: msgSucesso }, { quoted: mek });
-                } else {
-                    const msgFalso = `🚨❌ COMPROVATIVO FALSO DETECTADO! ❌🚨\n` +
-                        `💳 O teu comprovativo não foi confirmado!\n` +
-                        `🚫 PAGAMENTO NÃO CONFIRMADO = SERVIÇO NÃO DISPONIBILIZADO!`;
-                    await sock.sendMessage(from, { text: msgFalso }, { quoted: mek });
+                    await sock.sendMessage(from, { text: `🚨💳 COMPROVATIVO DETECTADO 💳\nID: ${comprovativoDados.transactionId}\nValor: ${comprovativoDados.valor}\nEstado: ⏳ Em verificação` }, { quoted: mek });
                 }
-            } catch (err) {
-                console.error('Erro ao processar imagem:', err);
-            }
-        } else if (body && (body.toUpperCase().includes('CONFIRMADO') || body.toUpperCase().includes('RECEBESTE'))) {
-            const comprovativoDados = processarComprovativo(body);
-
-            if (comprovativoDados.isValido) {
-                const usados = loadComprovativosUsados();
-                if (usados.includes(comprovativoDados.transactionId)) {
-                    const msgDuplicado = `⚠️🚫 COMPROVATIVO JÁ UTILIZADO 🚫⚠️\n\n` +
-                        `━━━━━━━━━━━━━━━━━━\n\n` +
-                        `❌ Este comprovativo já foi utilizado anteriormente no sistema!\n\n` +
-                        `🔍 Status: Comprovativo duplicado\n` +
-                        `⛔ Resultado: Pagamento não validado\n\n` +
-                        `⚠️ Por favor, envie um comprovativo válido e ainda não utilizado para que possamos verificar o seu pagamento.\n\n` +
-                        `━━━━━━━━━━━━━━━━━━\n\n` +
-                        `🛡️ MOZ CONECTED 🔥\n` +
-                        `✅ Segurança e transparência em todas as transações! 📲`;
-                    await sock.sendMessage(from, { text: msgDuplicado }, { quoted: mek });
-                    return;
-                }
-
-                saveComprovativoUsado(comprovativoDados.transactionId);
-
-                const msgSucesso = `🚨💳 COMPROVATIVO DETECTADO 💳🚨\n\n` +
-                    `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                    `📋 DETALHES DA TRANSAÇÃO\n\n` +
-                    `👤 Destinatário: ${comprovativoDados.destinatario}\n\n` +
-                    `📲 Receptor: ${comprovativoDados.receptor}\n\n` +
-                    `💰 Valor: ${comprovativoDados.valor}\n\n` +
-                    `🆔 ID da Transação: ${comprovativoDados.transactionId}\n\n` +
-                    `📅 Data: ${comprovativoDados.data}\n\n` +
-                    `⏰ Hora: ${comprovativoDados.hora}\n\n` +
-                    `📌 Estado: ⏳ Em verificação\n\n` +
-                    `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                    `⚠️ ATENÇÃO!\n\n` +
-                    `🔎 O comprovativo foi recebido e está a ser analisado para confirmar a autenticidade da transação.\n\n` +
-                    `❌ NÃO CONFIRME O PAGAMENTO ANTES DE VERIFICAR A ENTRADA DO VALOR NA CONTA.\n\n` +
-                    `🛡️ MOZ CONECTED 🔥\n` +
-                    `💯 Segurança, confiança e transparência! 🚀`;
-
-                await sock.sendMessage(from, { text: msgSucesso }, { quoted: mek });
-            }
+            } catch (err) { console.error('Erro OCR:', err); }
         }
 
-        // ----------------------------------------------------
-        // ADICIONAR COMANDOS DIRETAMENTE VIA WHATSAPP (PERMANENTE)
-        // ----------------------------------------------------
+        // COMANDOS PERSONALIZADOS
         if (command === 'addcmd') {
-            if (isGroup && !(await isAdmin(sock, from, sender))) {
-                await sock.sendMessage(from, { text: '❌ Apenas administradores podem adicionar novos comandos!' }, { quoted: mek });
-                return;
-            }
-
+            if (isGroup && !(await isAdmin(sock, from, sender))) return;
             const novoComando = args.shift();
             const respostaTexto = args.join(' ');
-
-            if (!novoComando || !respostaTexto) {
-                await sock.sendMessage(from, { text: '⚠️ Uso incorreto!\nExemplo: !addcmd !regras Respeitem todos os membros.' }, { quoted: mek });
-                return;
-            }
-
+            if (!novoComando || !respostaTexto) return;
             saveCustomCommand(novoComando, respostaTexto);
-            await sock.sendMessage(from, { text: `✅ Comando *${novoComando}* adicionado com sucesso e guardado permanentemente! 🚀` }, { quoted: mek });
+            await sock.sendMessage(from, { text: `✅ Comando *${novoComando}* adicionado com sucesso!` }, { quoted: mek });
             return;
         }
 
         const customCommands = loadCustomCommands();
-        if (customCommands[command]) {
-            await sock.sendMessage(from, { text: customCommands[command] }, { quoted: mek });
-            return;
-        } else if (customCommands[rawCommand.toLowerCase()]) {
-            await sock.sendMessage(from, { text: customCommands[rawCommand.toLowerCase()] }, { quoted: mek });
+        if (customCommands[command] || customCommands[rawCommand.toLowerCase()]) {
+            const resp = customCommands[command] || customCommands[rawCommand.toLowerCase()];
+            await sock.sendMessage(from, { text: resp }, { quoted: mek });
             return;
         }
 
         switch (command) {
             case 'compra': {
                 const quotedContext = mek.message?.extendedTextMessage?.contextInfo;
-                if (!quotedContext || !quotedContext.participant) {
-                    await sock.sendMessage(from, { text: '⚠️ Responde à mensagem do cliente com o comando!\nExemplo: .compra 440MB' }, { quoted: mek });
+                if (!quotedContext || !quotedContext.participant || args.length === 0) {
+                    await sock.sendMessage(from, { text: '⚠️ Usa: .compra 440MB (respondendo à mensagem do cliente)' }, { quoted: mek });
                     return;
                 }
-
-                if (args.length === 0) {
-                    await sock.sendMessage(from, { text: '⚠️ Informa a quantidade comprada. Ex: .compra 440MB' }, { quoted: mek });
-                    return;
-                }
-
                 const clienteJid = quotedContext.participant;
                 const clienteNumero = clienteJid.split('@')[0];
                 const inputData = args.join('');
                 const mbsComprados = parseDataToMB(inputData);
-
-                if (mbsComprados <= 0) {
-                    await sock.sendMessage(from, { text: '❌ Formato inválido! Usa valores como: 440MB, 1GB.' }, { quoted: mek });
-                    return;
-                }
+                if (mbsComprados <= 0) return;
 
                 const rankingData = loadRanking();
-
                 if (!rankingData[clienteJid]) {
-                    rankingData[clienteJid] = {
-                        numero: clienteNumero,
-                        totalMB: 0,
-                        comprasContador: 0
-                    };
+                    rankingData[clienteJid] = { numero: clienteNumero, totalMB: 0, comprasContador: 0 };
                 }
-
                 rankingData[clienteJid].totalMB += mbsComprados;
                 rankingData[clienteJid].comprasContador += 1;
                 saveRanking(rankingData);
 
                 const sortedRanking = Object.values(rankingData).sort((a, b) => b.totalMB - a.totalMB);
                 const posicao = sortedRanking.findIndex(user => user.numero === clienteNumero) + 1;
-                const totalFormatado = formatData(rankingData[clienteJid].totalMB);
 
-                const msgCompra = `🎉 COMPRA REGISTADA COM SUCESSO! 🚀\n\n` +
-                    `👤 Cliente: @${clienteNumero}\n` +
-                    `📦 Compra Atual: ${inputData.toUpperCase()}\n` +
-                    `💾 Total Acumulado: ${totalFormatado}\n` +
-                    `🏆 Posição no Ranking: #${posicao}º lugar\n\n` +
-                    `👑 Obrigado por preferir a MOZ CONECTED! 🔥`;
-
-                await sock.sendMessage(from, { text: msgCompra, mentions: [clienteJid] }, { quoted: mek });
+                await sock.sendMessage(from, { text: `🎉 Compra registada!\nCliente: @${clienteNumero}\nTotal: ${formatData(rankingData[clienteJid].totalMB)}\nPosição: #${posicao}º`, mentions: [clienteJid] }, { quoted: mek });
                 break;
             }
 
             case 'ranking': {
-                if (isGroup && !(await isAdmin(sock, from, sender))) {
-                    await sock.sendMessage(from, { text: '❌ Apenas os administradores podem ver o ranking! 🚫' }, { quoted: mek });
-                    return;
-                }
-
+                if (isGroup && !(await isAdmin(sock, from, sender))) return;
                 const rankingData = loadRanking();
                 const sortedRanking = Object.values(rankingData).sort((a, b) => b.totalMB - a.totalMB);
-
                 if (sortedRanking.length === 0) {
-                    await sock.sendMessage(from, { text: '📊 O ranking ainda está vazio!' }, { quoted: mek });
+                    await sock.sendMessage(from, { text: '📊 O ranking está vazio!' }, { quoted: mek });
                     return;
                 }
-
-                let rankingTxt = `🏆👑 RANKING DE CLIENTES - MOZ CONECTED 👑🏆\n\n`;
+                let txt = `🏆👑 RANKING MOZ CONECTED 👑🏆\n\n`;
                 const mentions = [];
-                const topList = sortedRanking.slice(0, 10);
-
-                topList.forEach((user, index) => {
-                    let medalha = '👤';
-                    if (index === 0) medalha = '🥇';
-                    else if (index === 1) medalha = '🥈';
-                    else if (index === 2) medalha = '🥉';
-
-                    rankingTxt += `${medalha} #${index + 1} - @${user.numero}\n` +
-                                  `   └ 💾 Total: ${formatData(user.totalMB)}\n\n`;
-                    mentions.push(`${user.numero}@s.whatsapp.net`);
+                sortedRanking.slice(0, 10).forEach((u, i) => {
+                    txt += `#${i+1} - @${u.numero} (${formatData(u.totalMB)})\n`;
+                    mentions.push(`${u.numero}@s.whatsapp.net`);
                 });
-
-                await sock.sendMessage(from, { text: rankingTxt, mentions }, { quoted: mek });
+                await sock.sendMessage(from, { text: txt, mentions }, { quoted: mek });
                 break;
             }
 
             case 'limpar': {
-                if (isGroup && !(await isAdmin(sock, from, sender))) {
-                    await sock.sendMessage(from, { text: '❌ Apenas os administradores podem limpar o ranking! 🚫' }, { quoted: mek });
-                    return;
-                }
-
-                try {
-                    fs.writeFileSync(RANKING_FILE, JSON.stringify({}));
-                    await sock.sendMessage(from, { text: '🧹🗑️ O ranking de clientes foi limpo com sucesso! Todos os dados foram reiniciados. 🔄' }, { quoted: mek });
-                } catch (e) {
-                    await sock.sendMessage(from, { text: '❌ Ocorreu um erro ao tentar limpar o ranking.' }, { quoted: mek });
-                }
+                if (isGroup && !(await isAdmin(sock, from, sender))) return;
+                fs.writeFileSync(RANKING_FILE, JSON.stringify({}));
+                await sock.sendMessage(from, { text: '🧹 Ranking limpo com sucesso!' }, { quoted: mek });
                 break;
             }
 
             case 'tabela':
-                const tabelaTexto = `🔥📡 MOZ CONECTED 📡🔥\n` +
-                    `━━━━━━━━━━━━━━━━━━\n` +
-                    `📶 TABELA OFICIAL DE PREÇOS\n` +
-                    `🇲🇿 INTERNET VODACOM 🇲🇿\n` +
-                    `━━━━━━━━━━━━━━━━━━\n` +
-                    `💥 PREÇOS QUE CABEM NO SEU BOLSO! 💥\n\n` +
-                    `🚀 Internet rápida, segura e estável para estares sempre conectado!\n\n` +
-                    `📦 PACOTES DIÁRIOS\n\n` +
-                    `🎯 OFERTAS ESPECIAIS\n` +
-                    `💰 4MT — 170MB\n` +
-                    `💰 7MT — 420MB\n` +
-                    `💰 10MT — 600MB\n` +
-                    `💰 15MT — 780MB\n` +
-                    `💰 18MT — 1GB\n` +
-                    `💰 24MT — 1.2GB\n` +
-                    `💰 48MT — 2.2GB\n` +
-                    `💰 75MT — 3.3GB\n` +
-                    `💰 100MT — 4.4GB\n` +
-                    `💰 125MT — 5.5GB\n` +
-                    `━━━━━━━━━━━━━━━━━━\n` +
-                    `🔥 MOZ CONECTED 🔥\n\n` +
-                    `📲 Mais internet, menos gastos!\n\n` +
-                    `💯 Qualidade e preços acessíveis para todos!\n` +
-                    `📡 A tua conexão, a nossa prioridade! ❤️‍🔥`;
-                await sock.sendMessage(from, { text: tabelaTexto }, { quoted: mek });
+                await sock.sendMessage(from, { text: `🔥📡 TABELA VODACOM 📡🔥\n4MT - 170MB\n7MT - 420MB\n10MT - 600MB\n18MT - 1GB\n100MT - 4.4GB` }, { quoted: mek });
                 break;
 
             case 'pagar':
             case 'pagamento':
-                const pagamentoTexto = `💳🔥 FORMAS DE PAGAMENTO 🔥💳\n\n` +
-                    `━━━━━━━━━━━━━━━━━━\n\n` +
-                    `📱 M-PESA\n` +
-                    `💰 Número: 84 384 3479\n` +
-                    `👤 Titular: Rodrigues\n\n` +
-                    `⚠️ Envie o comprovativo após o pagamento. 🧾✅\n\n` +
-                    `📌 Aceitamos apenas M-Pesa.\n` +
-                    `🔜 Em breve: e-Mola! 🚀\n\n` +
-                    `❤️🙏 Obrigado pela preferência! 🔥`;
-                await sock.sendMessage(from, { text: pagamentoTexto }, { quoted: mek });
-                break;
-
-            case 'grupo':
-                if (!isGroup) {
-                    await sock.sendMessage(from, { text: '❌ Este comando só pode ser usado dentro de grupos!' }, { quoted: mek });
-                    return;
-                }
-
-                if (!(await isAdmin(sock, from, sender))) {
-                    await sock.sendMessage(from, { text: '❌ Apenas os administradores podem usar este comando! 🚫' }, { quoted: mek });
-                    return;
-                }
-                
-                const action = args[0] ? args[0].toLowerCase() : '';
-                if (action === 'f') {
-                    await sock.groupSettingUpdate(from, 'announcement');
-                    await sock.sendMessage(from, { text: '🔒 Grupo fechado manualmente! 🔐' }, { quoted: mek });
-                } else if (action === 'a') {
-                    await sock.groupSettingUpdate(from, 'not_announcement');
-                    await sock.sendMessage(from, { text: '🔓 Grupo aberto manualmente! ✅' }, { quoted: mek });
-                }
+                await sock.sendMessage(from, { text: `💳 M-PESA\nNúmero: 84 384 3479\nTitular: Rodrigues` }, { quoted: mek });
                 break;
         }
     });
@@ -592,67 +325,19 @@ async function startBot() {
 
 function processarComprovativo(rawText) {
     const text = rawText.toUpperCase();
-    const temMpesa = text.includes('M-PESA') || text.includes('CONFIRMADO') || text.includes('TRANSFERIDO') || text.includes('PAGO') || text.includes('RECEBESTE');
+    const temMpesa = text.includes('M-PESA') || text.includes('CONFIRMADO') || text.includes('TRANSFERIDO');
     const temMoeda = text.includes('MT') || text.includes('MZN');
-
     let transactionId = 'N/A';
     const txMatch = text.match(/CONFIRMADO\s+([A-Z0-9]{10,12})/);
-    if (txMatch) {
-        transactionId = txMatch[1];
-    } else {
-        const fallbackTx = text.match(/([A-Z0-9]{10,12})/);
-        if (fallbackTx) transactionId = fallbackTx[1];
-    }
+    if (txMatch) transactionId = txMatch[1];
 
+    if (!temMpesa || !temMoeda || transactionId === 'N/A') return { isValido: false };
+    
     let valorStr = 'Confirmado';
     const valorMatch = text.match(/([\d\.,]+)\s*(MT|MZN)/);
-    if (valorMatch) {
-        valorStr = `${valorMatch[1]} MT`;
-    }
+    if (valorMatch) valorStr = `${valorMatch[1]} MT`;
 
-    const dataMatch = text.match(/(\d{2}[\/\.-]\d{2}[\/\.-]\d{2,4})/);
-    let horaStr = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', hour12: false });
-    const horaMatch = text.match(/(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
-    if (horaMatch) {
-        let rawHora = horaMatch[1].trim().toUpperCase();
-        if (rawHora.includes('PM')) {
-            let partes = rawHora.replace('PM', '').trim().split(':');
-            let h = parseInt(partes[0]);
-            let m = partes[1];
-            if (h < 12) h += 12;
-            horaStr = `${h}:${m}`;
-        } else if (rawHora.includes('AM')) {
-            let partes = rawHora.replace('AM', '').trim().split(':');
-            let h = parseInt(partes[0]);
-            let m = partes[1];
-            if (h === 12) h = 0;
-            horaStr = `${h < 10 ? '0' + h : h}:${m}`;
-        } else {
-            horaStr = rawHora;
-        }
-    }
-
-    if (!temMpesa || !temMoeda || transactionId === 'N/A') {
-        return { isValido: false };
-    }
-
-    let destinatario = 'Cliente M-Pesa';
-    const deMatch = text.match(/(?:DE|PARA)\s+([0-9\s\-]+[\–\-]?[A-Z\s]+)/);
-    if (deMatch) destinatario = deMatch[1].trim();
-
-    let receptor = 'Rodrigues';
-    const rodMatch = text.match(/(RODRIGUES[A-Z\s]*)/);
-    if (rodMatch) receptor = rodMatch[0].trim();
-
-    return {
-        isValido: true,
-        transactionId: transactionId,
-        valor: valorStr,
-        data: dataMatch ? dataMatch[1] : new Date().toLocaleDateString('pt-PT'),
-        hora: horaStr,
-        destinatario: destinatario,
-        receptor: receptor
-    };
+    return { isValido: true, transactionId, valor: valorStr };
 }
 
 async function getTargetGroup(sock) {
@@ -660,12 +345,9 @@ async function getTargetGroup(sock) {
         const groups = await sock.groupFetchAllParticipating();
         const groupIds = Object.keys(groups);
         return groupIds.length > 0 ? groupIds[0] : null;
-    } catch (e) {
-        console.error('Erro ao buscar grupos:', e);
-        return null;
-    }
+    } catch (e) { return null; }
 }
 
-// Iniciar Servidor Web & Bot diretamente no Index.js
+// INICIAR TUDO DIRETAMENTE NO INDEX.JS
 startWebServer();
 startBot();
