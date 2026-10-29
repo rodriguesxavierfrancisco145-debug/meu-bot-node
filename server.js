@@ -12,10 +12,24 @@ process.on('unhandledRejection', (reason, promise) => {
 // ==========================================
 // IMPORTAÇÕES E CONFIGURAÇÕES
 // ==========================================
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const pino = require('pino');
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
+
+// 🧹 Limpeza automática da sessão antiga no arranque para forçar um código novo válido
+const authFolder = path.join(__dirname, 'auth_info_baileys');
+if (!global.sock_startup_cleaned && fs.existsSync(authFolder)) {
+    try {
+        fs.rmSync(authFolder, { recursive: true, force: true });
+        console.log('🧹 Sessão anterior limpa com sucesso para gerar um código fresco!');
+    } catch (e) {
+        console.log('⚠️ Aviso ao limpar sessão:', e);
+    }
+}
+global.sock_startup_cleaned = true;
 
 // Configura o servidor Express para o Render manter a porta aberta
 const app = express();
@@ -30,7 +44,7 @@ app.listen(PORT, () => {
 });
 
 // ==========================================
-// CONEXÃO WHATSAPP COM PAIRING CODE AUTOMÁTICO
+// CONEXÃO WHATSAPP COM PAIRING CODE MAIS RÁPIDO
 // ==========================================
 async function connectToWhatsApp() {
     try {
@@ -40,19 +54,19 @@ async function connectToWhatsApp() {
 
         const sock = makeWASocket({
             auth: state,
-            browser: Browsers.macOS('Desktop'),
+            browser: ['Ubuntu', 'Chrome', '22.04.4'],
             logger: pino({ level: 'fatal' })
         });
 
         sock.ev.on('creds.update', saveCreds);
 
-        // SE NÃO ESTIVER AUTENTICADO, GERA O CÓDIGO COM O NÚMERO DIRETO
+        // SE NÃO ESTIVER AUTENTICADO, GERA O CÓDIGO COM O NÚMERO DIRETO O MAIS RÁPIDO POSSÍVEL
         if (!sock.authState.creds.registered) {
             const phoneNumber = "258853673680"; 
             
             console.log(`\n📱 A solicitar código de pareamento para o número: ${phoneNumber}`);
             
-            // Dá um pequeno tempo para o socket inicializar com estabilidade
+            // Tempo reduzido e otimizado para gerar o código instantaneamente sem expirar
             setTimeout(async () => {
                 try {
                     let code = await sock.requestPairingCode(phoneNumber);
@@ -63,7 +77,7 @@ async function connectToWhatsApp() {
                 } catch (err) {
                     console.error('[X] Erro ao gerar código de pareamento:', err);
                 }
-            }, 5000);
+            }, 2000);
         }
 
         sock.ev.on('connection.update', async (update) => {
