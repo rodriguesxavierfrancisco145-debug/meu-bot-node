@@ -1,13 +1,13 @@
 {
-  "name": "meu-bot-no",
+  "name": "moz-conected-bot",
   "version": "1.0.0",
-  "description": "Bot do WhatsApp em Node.js",
+  "description": "Bot WhatsApp Moz Conected",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.5",
+    "@whisockets/baileys": "^6.7.5",
     "express": "^4.19.2",
     "node-cron": "^3.0.3",
     "pino": "^9.0.0",
